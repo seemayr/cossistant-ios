@@ -41,27 +41,6 @@ public struct ConversationListView: View {
         }
         .buttonStyle(HapticButtonStyle())
         .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
-        .swipeActions(edge: .trailing) {
-          Button {
-            SupportHaptics.play(.buttonTap)
-            Task {
-              try? await timeline.load(conversationId: conversation.id)
-              try? await timeline.markSeen()
-              timeline.clear()
-            }
-          } label: {
-            Label(R.string(.swipe_mark_read), systemSymbol: .eyeFill)
-          }
-          .tint(.blue)
-        }
-        .swipeActions(edge: .leading) {
-          if conversation.status == .open {
-            NavigationLink(value: conversation.id) {
-              Label(R.string(.swipe_rate), systemSymbol: .starFill)
-            }
-            .tint(.orange)
-          }
-        }
       }
 
       if conversations.hasMore {
@@ -105,13 +84,82 @@ public struct ConversationListView: View {
   }
 
   private var emptyState: some View {
-    ContentUnavailableView {
-      Label(R.string(.empty_conversations_title), systemSymbol: .bubbleLeftAndBubbleRight)
-        .symbolEffect(.pulse, options: .repeating.speed(0.5))
-    } description: {
-      Text(R.string(.empty_conversations_description))
+    ConversationListEmptyView()
+      .transition(.fadeInScale)
+  }
+}
+
+// MARK: - Empty State
+
+private struct ConversationListEmptyView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var appeared = false
+  @State private var floating = false
+
+  var body: some View {
+    VStack(spacing: 28) {
+      VStack(spacing: 10) {
+        ghostCard(lineWidth: 110, delay: 0)
+        ghostCard(lineWidth: 80, delay: 0.08)
+        ghostCard(lineWidth: 100, delay: 0.16)
+      }
+      .padding(.horizontal, 32)
+      .offset(y: floating ? -3 : 3)
+      .animation(
+        reduceMotion ? nil : .easeInOut(duration: 2.5).repeatForever(autoreverses: true),
+        value: floating
+      )
+
+      VStack(spacing: 6) {
+        Text(R.string(.empty_conversations_title))
+          .font(.title3.weight(.semibold))
+
+        Text(R.string(.empty_conversations_description))
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+      }
+      .padding(.horizontal, 32)
+      .opacity(appeared ? 1 : 0)
+      .offset(y: appeared ? 0 : 10)
+      .animation(
+        reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.8).delay(0.25),
+        value: appeared
+      )
     }
-    .transition(.fadeInScale)
+    .task {
+      appeared = true
+      try? await Task.sleep(for: .milliseconds(700))
+      floating = true
+    }
+  }
+
+  private func ghostCard(lineWidth: CGFloat, delay: Double) -> some View {
+    HStack(spacing: 12) {
+      Circle()
+        .fill(.secondary.opacity(0.15))
+        .frame(width: 36, height: 36)
+
+      VStack(alignment: .leading, spacing: 6) {
+        RoundedRectangle(cornerRadius: 3)
+          .fill(.secondary.opacity(0.15))
+          .frame(width: lineWidth, height: 10)
+        RoundedRectangle(cornerRadius: 3)
+          .fill(.secondary.opacity(0.1))
+          .frame(width: lineWidth * 0.65, height: 7)
+      }
+
+      Spacer()
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 12)
+    .background(.secondary.opacity(0.06), in: .rect(cornerRadius: 14))
+    .opacity(appeared ? 1 : 0)
+    .offset(y: appeared ? 0 : 12)
+    .animation(
+      reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7).delay(delay),
+      value: appeared
+    )
   }
 }
 
@@ -224,10 +272,7 @@ private struct ConversationRowView: View {
   }
 
   private var formattedDate: String {
-    let formatter = ISO8601DateFormatter()
-    guard let date = formatter.date(from: conversation.updatedAt) else { return "" }
-    let display = RelativeDateTimeFormatter()
-    display.unitsStyle = .short
-    return display.localizedString(for: date, relativeTo: Date())
+    guard let date = SupportFormatters.parseISO8601( conversation.updatedAt) else { return "" }
+    return SupportFormatters.relativeDate.localizedString(for: date, relativeTo: Date())
   }
 }

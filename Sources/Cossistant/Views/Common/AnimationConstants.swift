@@ -69,9 +69,14 @@ func withCossistantAnimation(
   _ animation: Animation = CossistantAnimation.spring,
   _ body: () -> Void
 ) {
-  // Check UIAccessibility directly since we're outside a View context
+  // Check accessibility directly since we're outside a View context
   #if canImport(UIKit)
   if UIAccessibility.isReduceMotionEnabled {
+    body()
+    return
+  }
+  #elseif canImport(AppKit)
+  if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
     body()
     return
   }

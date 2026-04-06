@@ -1,14 +1,14 @@
 import SwiftUI
 import SFSafeSymbols
 
-/// A single message bubble with sender identity, or a centered event label.
-public struct MessageBubbleView: View {
+/// Routes to the correct bubble type based on item type and sender.
+struct MessageBubbleView: View {
   let item: TimelineItem
   let isFromVisitor: Bool
   let senderInfo: AgentInfo?
   let isGrouped: Bool
 
-  public init(
+  init(
     item: TimelineItem,
     visitorId: String?,
     agents: AgentRegistry,
@@ -20,42 +20,139 @@ public struct MessageBubbleView: View {
     self.isGrouped = isGrouped
   }
 
-  public var body: some View {
+  var body: some View {
     if item.type == .event {
       EventBubbleView(item: item, senderInfo: senderInfo)
     } else if item.type == .tool {
       ToolActivityBubbleView(item: item)
+    } else if isFromVisitor {
+      VisitorBubbleView(item: item, isGrouped: isGrouped)
     } else {
-      messageBubble
+      AgentBubbleView(item: item, senderInfo: senderInfo, isGrouped: isGrouped)
+    }
+  }
+}
+
+// MARK: - Visitor Bubble (right-aligned, tint background)
+
+private struct VisitorBubbleView: View {
+  let item: TimelineItem
+  let isGrouped: Bool
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 8) {
+      Spacer(minLength: 40)
+
+      VStack(alignment: .trailing, spacing: 4) {
+        VStack(alignment: .trailing, spacing: -6) {
+          if let text = item.text, !text.isEmpty {
+            Text(text)
+              .font(.body)
+              .foregroundStyle(.white)
+              .padding(.horizontal, 14)
+              .padding(.vertical, 10)
+              .background(.tint)
+              .clipShape(.rect(cornerRadius: 16))
+              .zIndex(1)
+          }
+          
+          if !isGrouped {
+            Text(Self.formattedTime(item.createdAt))
+              .font(.caption2)
+              .fontWeight(.semibold)
+              .foregroundStyle(.black)
+              .padding(.horizontal, 4)
+              .padding(.vertical, 2)
+              .background(Color.white.opacity(0.75))
+              .clipShape(.rect(cornerRadius: 6))
+              .padding(.horizontal, 4)
+              .zIndex(2)
+          }
+        }
+        
+        RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: true)
+      }
     }
   }
 
-  // MARK: - Message Bubble
+  static func formattedTime(_ createdAt: String) -> String {
+    guard let date = SupportFormatters.parseISO8601( createdAt) else { return "" }
+    return SupportFormatters.timeOnly.string(from: date)
+  }
+}
 
-  private var messageBubble: some View {
+// MARK: - Agent Bubble (left-aligned, secondary background, avatar)
+
+private struct AgentBubbleView: View {
+  let item: TimelineItem
+  let senderInfo: AgentInfo?
+  let isGrouped: Bool
+
+  var body: some View {
     HStack(alignment: .top, spacing: 8) {
-      if isFromVisitor { Spacer(minLength: 40) }
-
-      if !isFromVisitor {
-        if isGrouped {
-          // Invisible spacer matching avatar width to keep alignment
-          Color.clear
-            .frame(width: 28, height: 0)
-        } else {
-          AgentAvatarView(info: senderInfo, size: 28)
-        }
+      if isGrouped {
+        Color.clear
+          .frame(width: 28, height: 0)
+      } else {
+        AgentAvatarView(info: senderInfo, size: 28)
       }
 
-      VStack(alignment: isFromVisitor ? .trailing : .leading, spacing: 4) {
-        if !isFromVisitor && !isGrouped, let name = senderInfo?.name {
+      VStack(alignment: .leading, spacing: 4) {
+        if !isGrouped, let name = senderInfo?.name {
           Text(name)
             .font(.caption)
             .fontWeight(.medium)
             .foregroundStyle(.secondary)
         }
 
-        if let text = item.text, !text.isEmpty {
-          Text(text)
+        VStack(alignment: .leading, spacing: -6) {
+          if let text = item.text, !text.isEmpty {
+            Text(text)
+              .font(.body)
+              .foregroundStyle(.primary)
+              .padding(.horizontal, 14)
+              .padding(.vertical, 10)
+              .background(.secondary.opacity(0.12))
+              .clipShape(.rect(cornerRadius: 16))
+              .zIndex(1)
+          }
+          
+          if !isGrouped {
+            Text(VisitorBubbleView.formattedTime(item.createdAt))
+              .font(.caption2)
+              .fontWeight(.semibold)
+              .foregroundStyle(.black)
+              .padding(.horizontal, 4)
+              .padding(.vertical, 2)
+              .background(Color.white.opacity(0.75))
+              .clipShape(.rect(cornerRadius: 6))
+              .padding(.horizontal, 4)
+              .zIndex(2)
+          }
+        }
+
+        RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: false)
+      }
+
+      Spacer(minLength: 40)
+    }
+  }
+}
+
+// MARK: - Rich Parts (shared between visitor & agent)
+
+private struct RichPartsView: View {
+  let parts: [TimelineItemPart]
+  let itemText: String?
+  let isFromVisitor: Bool
+
+  var body: some View {
+    ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+      switch part {
+      case .text(let textPart):
+        // Only render from part when item.text is missing (e.g. streaming)
+        if itemText == nil || itemText?.isEmpty == true {
+          Text(textPart.text)
             .font(.body)
             .foregroundStyle(isFromVisitor ? .white : .primary)
             .padding(.horizontal, 14)
@@ -63,59 +160,26 @@ public struct MessageBubbleView: View {
             .background(isFromVisitor ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(0.12)))
             .clipShape(.rect(cornerRadius: 16))
         }
-
-        // Rich parts
-        ForEach(Array(item.parts.enumerated()), id: \.offset) { _, part in
-          switch part {
-          case .text(let textPart):
-            // Only render from part when item.text is missing (e.g. streaming)
-            if item.text == nil || item.text?.isEmpty == true {
-              Text(textPart.text)
-                .font(.body)
-                .foregroundStyle(isFromVisitor ? .white : .primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(isFromVisitor ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(0.12)))
-                .clipShape(.rect(cornerRadius: 16))
-            }
-          case .image(let img):
-            ImagePartView(image: img)
-          case .tool(let tool):
-            ToolCallView(tool: tool)
-          case .reasoning(let reasoning):
-            ReasoningView(reasoning: reasoning)
-          case .sourceUrl(let source):
-            SourceUrlChipView(source: source)
-          case .sourceDocument(let source):
-            SourceDocumentChipView(source: source)
-          case .file(let file):
-            FileCardView(file: file)
-          case .event, .metadata, .stepStart, .unknown:
-            EmptyView()
-          }
-        }
-
-        if !isGrouped {
-          Text(formattedTime)
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
-        }
+      case .image(let img):
+        ImagePartView(image: img)
+      case .tool(let tool):
+        ToolCallView(tool: tool)
+      case .reasoning(let reasoning):
+        ReasoningView(reasoning: reasoning)
+      case .sourceUrl(let source):
+        SourceUrlChipView(source: source)
+      case .sourceDocument(let source):
+        SourceDocumentChipView(source: source)
+      case .file(let file):
+        FileCardView(file: file)
+      case .event, .metadata, .stepStart, .unknown:
+        EmptyView()
       }
-
-      if !isFromVisitor { Spacer(minLength: 40) }
     }
-  }
-
-  private var formattedTime: String {
-    let formatter = ISO8601DateFormatter()
-    guard let date = formatter.date(from: item.createdAt) else { return "" }
-    let display = DateFormatter()
-    display.timeStyle = .short
-    return display.string(from: date)
   }
 }
 
-// MARK: - Event Bubble (separate struct for performance)
+// MARK: - Event Bubble
 
 private struct EventBubbleView: View {
   let item: TimelineItem
@@ -124,19 +188,26 @@ private struct EventBubbleView: View {
   var body: some View {
     HStack {
       Spacer()
+      
       HStack(spacing: 6) {
         eventIcon
         label
       }
       .font(.caption)
-      .foregroundStyle(.secondary)
+      .fontWeight(.medium)
+      .foregroundStyle(.purple.opacity(0.9))
       .padding(.horizontal, 12)
       .padding(.vertical, 6)
-      .background(.secondary.opacity(0.08))
+      .background(.purple.opacity(0.08))
       .clipShape(.capsule)
+      .overlay {
+        Capsule()
+          .stroke(Color.purple.opacity(0.5), lineWidth: 1.2)
+      }
+      
       Spacer()
     }
-    .padding(.vertical, 4)
+    .padding(.vertical, 12)
     .transition(.fadeInScale)
   }
 
@@ -150,25 +221,18 @@ private struct EventBubbleView: View {
     switch eventType {
     case "resolved":
       Image(systemSymbol: .checkmarkCircleFill)
-        .foregroundStyle(.green)
     case "reopened":
       Image(systemSymbol: .arrowUturnForwardCircleFill)
-        .foregroundStyle(.orange)
     case "participant_joined":
       Image(systemSymbol: .personBadgePlus)
-        .foregroundStyle(.tint)
     case "participant_left":
       Image(systemSymbol: .personBadgeMinus)
-        .foregroundStyle(.secondary)
     case "assigned":
       Image(systemSymbol: .personCropCircleBadgeCheckmark)
-        .foregroundStyle(.tint)
     case "visitor_identified":
       Image(systemSymbol: .personCropCircleFill)
-        .foregroundStyle(.tint)
     default:
       Image(systemSymbol: .infoCircleFill)
-        .foregroundStyle(.secondary)
     }
   }
 
@@ -191,7 +255,7 @@ private struct EventBubbleView: View {
   }
 }
 
-// MARK: - Tool Activity Bubble (searchKnowledgeBase etc.)
+// MARK: - Tool Activity Bubble
 
 private struct ToolActivityBubbleView: View {
   let item: TimelineItem
@@ -204,7 +268,7 @@ private struct ToolActivityBubbleView: View {
         .foregroundStyle(.secondary)
     }
     .padding(.horizontal, 12)
-    .padding(.vertical, 8)
+    .padding(.vertical, 0)
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
@@ -233,11 +297,9 @@ private struct ToolActivityBubbleView: View {
   }
 
   private var toolLabel: String {
-    // Use item.text if available (server-provided summary)
     if let text = item.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
       return text
     }
-    // Extract query from tool input for searchKnowledgeBase
     let toolName = item.tool ?? "tool"
     let state = toolState
     if state == "partial" {
@@ -250,7 +312,7 @@ private struct ToolActivityBubbleView: View {
   }
 }
 
-// MARK: - Agent Avatar (reusable)
+// MARK: - Agent Avatar
 
 struct AgentAvatarView: View {
   let info: AgentInfo?

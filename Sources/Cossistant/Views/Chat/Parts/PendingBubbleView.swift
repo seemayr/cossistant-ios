@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// A pending message bubble showing sending/failed state.
-public struct PendingBubbleView: View {
+struct PendingBubbleView: View {
   let message: PendingMessage
   let onRetry: (() -> Void)?
   let onDiscard: (() -> Void)?
 
-  public init(
+  init(
     message: PendingMessage,
     onRetry: (() -> Void)? = nil,
     onDiscard: (() -> Void)? = nil
@@ -16,7 +16,7 @@ public struct PendingBubbleView: View {
     self.onDiscard = onDiscard
   }
 
-  public var body: some View {
+  var body: some View {
     HStack {
       Spacer(minLength: 60)
 

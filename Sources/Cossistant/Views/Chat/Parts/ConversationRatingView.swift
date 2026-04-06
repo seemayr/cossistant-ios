@@ -30,7 +30,7 @@ struct ConversationRatingView: View {
       }
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 16)
+    .padding(.vertical, 24)
     .padding(.horizontal, 16)
     .background(.regularMaterial, ignoresSafeAreaEdges: .bottom)
     .task {
@@ -50,7 +50,7 @@ struct ConversationRatingView: View {
   // MARK: - Rating State
 
   private var ratingState: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: 6) {
       Text(R.string(.rating_prompt))
         .font(.subheadline)
         .fontWeight(.medium)
@@ -63,21 +63,16 @@ struct ConversationRatingView: View {
           .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
-    .animation(.snappy(duration: 0.2), value: selectedRating)
   }
 
   // MARK: - Thanks State
 
   private var thanksState: some View {
-    HStack(spacing: 8) {
-      Image(systemSymbol: .checkmarkCircleFill)
-        .foregroundStyle(.green)
+    VStack(spacing: 4) {
       Text(R.string(.rating_thanks))
         .font(.subheadline)
         .foregroundStyle(.secondary)
-
-      Spacer()
-
+      
       if let rating = displayRating {
         HStack(spacing: 2) {
           ForEach(1...5, id: \.self) { i in
@@ -96,25 +91,28 @@ struct ConversationRatingView: View {
     HStack(spacing: 6) {
       ForEach(1...5, id: \.self) { index in
         Button {
-          if selectedRating == index {
-            selectedRating = nil
-          } else {
-            selectedRating = index
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            if selectedRating == index {
+              selectedRating = nil
+            } else {
+              selectedRating = index
+            }
+          }
+          if selectedRating != nil {
             SupportHaptics.play(.buttonTap)
           }
         } label: {
           Image(systemSymbol: starSymbol(for: index))
-            .font(.system(size: 32))
+            .font(.title)
             .foregroundStyle(starColor(for: index))
             .scaleEffect(index <= animatedStars ? 1 : 0.01)
             .opacity(index <= animatedStars ? 1 : 0)
         }
         .buttonStyle(.plain)
         .disabled(isLocked)
+        .animation(.spring(response: 0.35, dampingFraction: 0.55), value: animatedStars)
       }
     }
-    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedRating)
-    .animation(.spring(response: 0.35, dampingFraction: 0.55), value: animatedStars)
   }
 
   private func starSymbol(for index: Int) -> SFSymbol {

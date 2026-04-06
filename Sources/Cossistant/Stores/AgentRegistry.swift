@@ -81,9 +81,7 @@ public final class AgentRegistry {
   /// - Offline: beyond 1 hour or nil
   public nonisolated static func onlineStatus(lastSeenAt: String?) -> OnlineStatus {
     guard let lastSeenAt else { return .offline }
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    guard let date = formatter.date(from: lastSeenAt) else { return .offline }
+    guard let date = SupportFormatters.parseISO8601(lastSeenAt) else { return .offline }
     let elapsed = Date().timeIntervalSince(date)
     if elapsed < 15 * 60 { return .online }
     if elapsed < 60 * 60 { return .away }

@@ -39,6 +39,7 @@ enum R {
     case empty_chat_description
     case input_placeholder
     case load_older
+    case send
     case sending
     case seen
     case conversation_closed

@@ -3,6 +3,7 @@ import SwiftUI
 /// Custom loading indicator with animated dots — gives the support SDK its own identity.
 struct SupportLoadingView: View {
   let message: String
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var activeDot = 0
 
   init(_ message: String = "Loading...") {
@@ -16,7 +17,8 @@ struct SupportLoadingView: View {
         .font(.subheadline)
         .foregroundStyle(.secondary)
     }
-    .task(id: "dots") {
+    .task(id: reduceMotion) {
+      guard !reduceMotion else { return }
       while !Task.isCancelled {
         try? await Task.sleep(for: .milliseconds(300))
         withAnimation(.easeInOut(duration: 0.25)) {

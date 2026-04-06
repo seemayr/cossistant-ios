@@ -7,14 +7,6 @@ enum ChatState: Equatable {
   case loading
   case ready
   case failed(String)
-
-  static func == (lhs: ChatState, rhs: ChatState) -> Bool {
-    switch (lhs, rhs) {
-    case (.creating, .creating), (.loading, .loading), (.ready, .ready): return true
-    case (.failed(let a), .failed(let b)): return a == b
-    default: return false
-    }
-  }
 }
 
 /// Chat view — handles both existing conversations and creating new ones.
@@ -80,7 +72,9 @@ public struct ChatView: View {
   public var body: some View {
     VStack(spacing: 0) {
       messageArea
+      
       Divider()
+      
       if activeConversationStatus == .resolved && activeConversationDeletedAt == nil {
         ConversationRatingView(
           existingRating: activeConversationRating,
@@ -118,7 +112,7 @@ public struct ChatView: View {
   private var messageArea: some View {
     ScrollViewReader { proxy in
       ScrollView {
-        LazyVStack(spacing: 8) {
+        LazyVStack(spacing: 0) {
           // Status banner for creating/loading/error
           statusBanner
 
@@ -133,20 +127,19 @@ public struct ChatView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-            .padding(.top, 8)
+            .padding(.top, 16)
             .buttonStyle(HapticButtonStyle())
           }
 
-          ForEach(Array(timeline.visibleItems.enumerated()), id: \.element.id) { index, item in
-            let isGrouped = isGroupedWithPrevious(index: index)
+          ForEach(groupedItems, id: \.item.id) { entry in
             MessageBubbleView(
-              item: item,
+              item: entry.item,
               visitorId: visitorId,
               agents: agents,
-              isGrouped: isGrouped
+              isGrouped: entry.isGrouped
             )
-            .id(item.id)
-            .padding(.top, isGrouped ? -4 : 0)
+            .id(entry.item.id)
+            .padding(.top, entry.isGrouped ? 4 : 12)
             .transition(.slideUpFade)
           }
 
@@ -157,6 +150,7 @@ public struct ChatView: View {
               onDiscard: { timeline.discardPending(pendingId: pending.id) }
             )
             .id(pending.id)
+            .padding(.top, 8)
             .transition(.slideUpFade)
           }
 
@@ -166,6 +160,7 @@ public struct ChatView: View {
               name: connection.typingAgentName(for: convId),
               image: connection.typingIndicators[convId]?.image
             )
+            .padding(.top, 8)
             .transition(.fadeInScale)
           }
 
@@ -176,6 +171,7 @@ public struct ChatView: View {
               phase: connection.aiProcessing[convId]?.phase,
               message: connection.aiStatusMessage(for: convId)
             )
+            .padding(.top, 8)
             .transition(.fadeInScale)
           }
 
@@ -184,7 +180,7 @@ public struct ChatView: View {
             let receipts = connection.seen(for: convId)
             if !receipts.isEmpty {
               SeenIndicatorView(receipts: receipts)
-                .padding(.top, -4)
+                .padding(.top, 4)
                 .transition(.opacity)
             }
           }
@@ -250,11 +246,8 @@ public struct ChatView: View {
   // MARK: - Chat Empty State
 
   private var chatEmptyState: some View {
-    VStack(spacing: 16) {
-      Image(systemSymbol: .bubbleLeftAndBubbleRightFill)
-        .font(.system(size: 48))
-        .foregroundStyle(.secondary.opacity(0.3))
-        .symbolEffect(.pulse, options: .repeating.speed(0.5))
+    VStack(spacing: 20) {
+      ChatEmptyIllustration()
 
       Text(R.string(.empty_chat_title))
         .font(.headline)
@@ -273,7 +266,7 @@ public struct ChatView: View {
   // MARK: - Conversation Closed Bar
 
   private var conversationClosedBar: some View {
-    VStack(spacing: 8) {
+    HStack(spacing: 6) {
       Image(systemSymbol: .checkmarkCircleFill)
         .font(.title3)
         .foregroundStyle(.green)
@@ -281,8 +274,10 @@ public struct ChatView: View {
         .font(.subheadline)
         .foregroundStyle(.secondary)
     }
+    .padding(.vertical, 24)
+    .padding(.horizontal, 6)
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 16)
+    
     .background(.regularMaterial)
   }
 
@@ -300,9 +295,10 @@ public struct ChatView: View {
         .disabled(!isReady)
 
       Button(action: sendMessage) {
-        Image(systemSymbol: .arrowUpCircleFill)
-          .font(.system(size: 32))
-          .foregroundStyle(canSend ? Color.accentColor : Color.secondary.opacity(0.4))
+        Label(R.string(.send), systemSymbol: .arrowUpCircleFill)
+          .labelStyle(.iconOnly)
+          .font(.title)
+          .foregroundStyle(canSend ? Color.accentColor : .secondary.opacity(0.4))
       }
       .buttonStyle(HapticButtonStyle(haptic: .messageSent))
       .disabled(!canSend)
@@ -323,26 +319,51 @@ public struct ChatView: View {
 
   // MARK: - Message Grouping
 
+  private var groupedItems: [(item: TimelineItem, isGrouped: Bool)] {
+    timeline.visibleItems.enumerated().map { index, item in
+      (item: item, isGrouped: isGroupedWithPrevious(index: index))
+    }
+  }
+
   /// Five-minute threshold for grouping consecutive messages from the same sender.
   private static let groupingInterval: TimeInterval = 300
 
   private func isGroupedWithPrevious(index: Int) -> Bool {
     let items = timeline.visibleItems
-    guard index > 0 else { return false }
+    guard index > 0 else {
+      logGrouping(index: index, result: false, reason: "first item")
+      return false
+    }
     let current = items[index]
-    guard current.type == .message else { return false }
+    guard current.type == .message else {
+      logGrouping(index: index, result: false, reason: "type=\(current.type) (not message)")
+      return false
+    }
 
     // Find the previous message, skipping events/tools in between
-    guard let previous = items[..<index].last(where: { $0.type == .message }) else { return false }
+    guard let previous = items[..<index].last(where: { $0.type == .message }) else {
+      logGrouping(index: index, result: false, reason: "no previous message found")
+      return false
+    }
 
     // Same sender?
-    guard sameSender(current, previous) else { return false }
+    guard sameSender(current, previous) else {
+      logGrouping(index: index, result: false, reason: "different sender — current: \(senderDescription(current)), previous: \(senderDescription(previous))")
+      return false
+    }
 
     // Within time threshold?
-    let formatter = ISO8601DateFormatter()
-    guard let currentDate = formatter.date(from: current.createdAt),
-      let previousDate = formatter.date(from: previous.createdAt) else { return false }
-    return currentDate.timeIntervalSince(previousDate) < Self.groupingInterval
+    guard let currentDate = SupportFormatters.parseISO8601( current.createdAt),
+      let previousDate = SupportFormatters.parseISO8601( previous.createdAt) else {
+      logGrouping(index: index, result: false, reason: "date parse failed — current: \"\(current.createdAt)\", previous: \"\(previous.createdAt)\"")
+      return false
+    }
+    let delta = currentDate.timeIntervalSince(previousDate)
+    let withinThreshold = delta < Self.groupingInterval
+    logGrouping(index: index, result: withinThreshold, reason: withinThreshold
+      ? "same sender, \(Int(delta))s apart (< \(Int(Self.groupingInterval))s)"
+      : "same sender but \(Int(delta))s apart (>= \(Int(Self.groupingInterval))s threshold)")
+    return withinThreshold
   }
 
   private func sameSender(_ a: TimelineItem, _ b: TimelineItem) -> Bool {
@@ -350,6 +371,24 @@ public struct ChatView: View {
     if let au = a.userId, let bu = b.userId, au == bu { return true }
     if let aa = a.aiAgentId, let ba = b.aiAgentId, aa == ba { return true }
     return false
+  }
+
+  // MARK: - Grouping Debug
+
+  private func senderDescription(_ item: TimelineItem) -> String {
+    var parts: [String] = []
+    if let v = item.visitorId { parts.append("visitor=\(v)") }
+    if let u = item.userId { parts.append("user=\(u)") }
+    if let a = item.aiAgentId { parts.append("ai=\(a)") }
+    if parts.isEmpty { parts.append("no sender IDs") }
+    return "[\(parts.joined(separator: ", "))]"
+  }
+
+  private func logGrouping(index: Int, result: Bool, reason: String) {
+    let items = timeline.visibleItems
+    let item = items[index]
+    let text = (item.text ?? "").prefix(30)
+    print("[Grouping] #\(index) id=\(item.id ?? "nil") type=\(item.type) \"\(text)\" → \(result ? "GROUPED" : "NOT grouped") — \(reason)")
   }
 
   // MARK: - Actions
@@ -413,12 +452,64 @@ public struct ChatView: View {
   }
 }
 
+// MARK: - Chat Empty Illustration
+
+/// Staggered mini-bubbles that float in and gently bob, giving the empty state personality.
+private struct ChatEmptyIllustration: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var appeared = false
+  @State private var floating = false
+
+  private let bubbles: [(text: String, isRight: Bool, delay: Double, drift: CGFloat, rotation: Double, scale: CGFloat)] = [
+    ("👋", false, 0.0, -3.5, -2.5, 1.04),
+    ("💬", true, 0.15, 4.5, 3, 1.06),
+    ("✨", false, 0.3, -3, -2, 1.03),
+  ]
+
+  var body: some View {
+    VStack(spacing: -10) {
+      ForEach(Array(bubbles.enumerated()), id: \.offset) { index, bubble in
+        HStack {
+          if bubble.isRight { Spacer() }
+          Text(bubble.text)
+            .font(.largeTitle)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(.secondary.opacity(bubble.isRight ? 0.08 : 0.05))
+            .clipShape(.rect(cornerRadius: 18))
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 16)
+            .offset(y: floating ? bubble.drift : 0)
+            .rotationEffect(.degrees(floating ? bubble.rotation : 0))
+            .scaleEffect(floating ? bubble.scale : 1)
+            .animation(
+              reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7).delay(bubble.delay),
+              value: appeared
+            )
+            .animation(
+              reduceMotion ? nil : .easeInOut(duration: 2.0 + Double(index) * 0.4)
+                .repeatForever(autoreverses: true)
+                .delay(bubble.delay + 0.6),
+              value: floating
+            )
+          if !bubble.isRight { Spacer() }
+        }
+      }
+    }
+    .frame(width: 170)
+    .task {
+      appeared = true
+      try? await Task.sleep(for: .milliseconds(600))
+      floating = true
+    }
+  }
+}
+
 // MARK: - Typing Bubble (bouncing dots)
 
 private struct TypingBubbleView: View {
   let name: String?
   let image: String?
-  @State private var isAnimating = false
 
   var body: some View {
     HStack(spacing: 8) {
@@ -436,29 +527,15 @@ private struct TypingBubbleView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        HStack(spacing: 4) {
-          ForEach(0..<3, id: \.self) { index in
-            Circle()
-              .fill(.tint)
-              .frame(width: 6, height: 6)
-              .offset(y: isAnimating ? -4 : 0)
-              .animation(
-                .easeInOut(duration: 0.4)
-                  .repeatForever(autoreverses: true)
-                  .delay(Double(index) * 0.15),
-                value: isAnimating
-              )
-          }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(.secondary.opacity(0.12))
-        .clipShape(.rect(cornerRadius: 16))
+        
+        AnimatedDotsView(style: .bounce)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 14)
+          .background(.secondary.opacity(0.12))
+          .clipShape(.rect(cornerRadius: 16))
       }
       Spacer()
     }
-    .onAppear { isAnimating = true }
-    .onDisappear { isAnimating = false }
   }
 }
 
@@ -467,7 +544,6 @@ private struct TypingBubbleView: View {
 private struct AIProgressBubbleView: View {
   let phase: String?
   let message: String?
-  @State private var isAnimating = false
 
   private var isDone: Bool { phase == "done" }
 
@@ -479,22 +555,7 @@ private struct AIProgressBubbleView: View {
             .font(.caption)
             .foregroundStyle(.green)
         } else {
-          // Themed dot spinner
-          HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { index in
-              Circle()
-                .fill(.tint)
-                .frame(width: 5, height: 5)
-                .scaleEffect(isAnimating ? 1.2 : 0.6)
-                .opacity(isAnimating ? 1 : 0.3)
-                .animation(
-                  .easeInOut(duration: 0.6)
-                    .repeatForever(autoreverses: true)
-                    .delay(Double(index) * 0.2),
-                  value: isAnimating
-                )
-            }
-          }
+          AnimatedDotsView(style: .pulse, dotSize: 5, spacing: 3)
         }
 
         Text(phaseLabel)
@@ -507,9 +568,6 @@ private struct AIProgressBubbleView: View {
       .clipShape(.rect(cornerRadius: 16))
       Spacer()
     }
-    .onAppear { isAnimating = true }
-    .onDisappear { isAnimating = false }
-    .animation(.snappy(duration: 0.2), value: isDone)
   }
 
   private var phaseLabel: String {

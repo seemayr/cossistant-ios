@@ -261,7 +261,7 @@ public struct PendingMessage: Sendable, Identifiable {
       userId: nil,
       aiAgentId: nil,
       visitorId: visitorId,
-      createdAt: ISO8601DateFormatter().string(from: createdAt),
+      createdAt: SupportFormatters.formatISO8601( createdAt),
       deletedAt: nil
     )
   }

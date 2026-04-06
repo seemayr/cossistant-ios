@@ -12,7 +12,7 @@ struct ToolCallView: View {
         .font(.caption)
         .foregroundStyle(isError ? .red : .secondary)
       if isPartial {
-        ToolDotsView()
+        AnimatedDotsView(style: .subtle, color: .secondary, dotSize: 4, spacing: 3)
       }
     }
     .padding(.horizontal, 12)
@@ -55,26 +55,3 @@ struct ToolCallView: View {
   }
 }
 
-// MARK: - Animated Dots (small inline spinner)
-
-private struct ToolDotsView: View {
-  @State private var isAnimating = false
-
-  var body: some View {
-    HStack(spacing: 3) {
-      ForEach(0..<3, id: \.self) { index in
-        Circle()
-          .fill(.secondary)
-          .frame(width: 4, height: 4)
-          .opacity(isAnimating ? 1 : 0.3)
-          .animation(
-            .easeInOut(duration: 0.5)
-              .repeatForever(autoreverses: true)
-              .delay(Double(index) * 0.15),
-            value: isAnimating
-          )
-      }
-    }
-    .onAppear { isAnimating = true }
-  }
-}

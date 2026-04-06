@@ -1,412 +1,940 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "support_title" : {
-      "comment" : "Navigation title for the main support conversation list.",
+    "ai_phase_default" : {
+      "comment" : "AI processing phase label for unknown/generic phases.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Support" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Support" } }
-      }
-    },
-    "conversation_title" : {
-      "comment" : "Navigation title inside an open conversation/chat view.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterhaltung" } }
-      }
-    },
-    "back" : {
-      "comment" : "Accessibility label for the back navigation button.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Zurück" } }
-      }
-    },
-    "connecting" : {
-      "comment" : "Loading indicator shown while bootstrapping the SDK connection.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connecting..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbinden..." } }
-      }
-    },
-    "loading_conversations" : {
-      "comment" : "Loading indicator shown while fetching the conversation list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading conversations..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lade Unterhaltungen..." } }
-      }
-    },
-    "loading_messages" : {
-      "comment" : "Loading indicator shown while fetching messages in a conversation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading messages..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Lade Nachrichten..." } }
-      }
-    },
-    "creating_conversation" : {
-      "comment" : "Loading indicator shown while a new conversation is being created.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Setting up your conversation..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterhaltung wird erstellt..." } }
-      }
-    },
-    "error_title" : {
-      "comment" : "Title shown when an operation fails in the chat view.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Something went wrong" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Etwas ist schiefgelaufen" } }
-      }
-    },
-    "error_connection" : {
-      "comment" : "Title shown when the SDK fails to connect during bootstrap.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Connection Error" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindungsfehler" } }
-      }
-    },
-    "retry" : {
-      "comment" : "Button label to retry a failed operation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try Again" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Erneut versuchen" } }
-      }
-    },
-    "retry_short" : {
-      "comment" : "Short retry label on failed pending messages.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nochmal" } }
-      }
-    },
-    "discard" : {
-      "comment" : "Button to discard a failed pending message.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Discard" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verwerfen" } }
-      }
-    },
-    "new_conversation_cta" : {
-      "comment" : "Label on the big CTA button to start a new support conversation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "New Conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Neue Unterhaltung" } }
-      }
-    },
-    "empty_conversations_title" : {
-      "comment" : "Title shown when the conversation list is empty.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No Conversations" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Unterhaltungen" } }
-      }
-    },
-    "empty_conversations_description" : {
-      "comment" : "Description shown below the empty conversations title.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap below to start a conversation and get help." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Tippe unten um eine Unterhaltung zu starten." } }
-      }
-    },
-    "load_more" : {
-      "comment" : "Button at the bottom of conversation list to load more items.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load more..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Mehr laden..." } }
-      }
-    },
-    "swipe_mark_read" : {
-      "comment" : "Swipe action label to mark a conversation as read.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Read" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gelesen" } }
-      }
-    },
-    "swipe_rate" : {
-      "comment" : "Swipe action label to rate a conversation.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rate" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bewerten" } }
-      }
-    },
-    "status_open" : {
-      "comment" : "Badge label for open/active conversations.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Offen" } }
-      }
-    },
-    "status_resolved" : {
-      "comment" : "Badge label for resolved/closed conversations.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Resolved" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gelöst" } }
-      }
-    },
-    "conversation_default_title" : {
-      "comment" : "Fallback title for conversations without a title.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Unterhaltung" } }
-      }
-    },
-    "sender_you" : {
-      "comment" : "Label for the current visitor as message sender in previews.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "You" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Du" } }
-      }
-    },
-    "sender_default" : {
-      "comment" : "Fallback name when agent identity cannot be resolved.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Support" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Support" } }
-      }
-    },
-    "empty_chat_title" : {
-      "comment" : "Title in empty chat when no messages have been sent yet.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start the conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Starte die Unterhaltung" } }
-      }
-    },
-    "empty_chat_description" : {
-      "comment" : "Subtitle in empty chat encouraging the user to send a message.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send a message below and we'll get back to you soon." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Sende eine Nachricht und wir melden uns bald." } }
-      }
-    },
-    "input_placeholder" : {
-      "comment" : "Placeholder text inside the message input field.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Type a message..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Nachricht eingeben..." } }
-      }
-    },
-    "load_older" : {
-      "comment" : "Button to load older messages in the chat timeline.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load older messages" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Ältere Nachrichten laden" } }
-      }
-    },
-    "sending" : {
-      "comment" : "Status label on a message that is currently being sent.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sending..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Senden..." } }
-      }
-    },
-    "seen" : {
-      "comment" : "Label next to seen/read receipt avatars.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Seen" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gesehen" } }
-      }
-    },
-    "typing_indicator" : {
-      "comment" : "Shows who is typing. %@ is replaced with the agent name.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is typing..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ schreibt..." } }
-      }
-    },
-    "ai_phase_thinking" : {
-      "comment" : "AI processing phase label when the AI is thinking.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Thinking..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Denkt nach..." } }
-      }
-    },
-    "ai_phase_searching" : {
-      "comment" : "AI processing phase label when searching the knowledge base.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Searching knowledge base..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wissensdatenbank wird durchsucht..." } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verarbeitung..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Processing..."
+          }
+        }
       }
     },
     "ai_phase_generating" : {
       "comment" : "AI processing phase label when generating the response.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Writing response..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Antwort wird verfasst..." } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort wird verfasst..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing response..."
+          }
+        }
       }
     },
-    "ai_phase_default" : {
-      "comment" : "AI processing phase label for unknown/generic phases.",
+    "ai_phase_searching" : {
+      "comment" : "AI processing phase label when searching the knowledge base.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Processing..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verarbeitung..." } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wissensdatenbank wird durchsucht..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching knowledge base..."
+          }
+        }
       }
     },
-    "reply_sent" : {
-      "comment" : "Label shown when the AI has finished and sent a reply.",
+    "ai_phase_thinking" : {
+      "comment" : "AI processing phase label when the AI is thinking.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reply sent" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Antwort gesendet" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denkt nach..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thinking..."
+          }
+        }
       }
     },
-    "event_resolved" : {
-      "comment" : "Event label when someone resolves the conversation. %@ = actor name.",
+    "back" : {
+      "comment" : "Accessibility label for the back navigation button.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ resolved the conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ hat die Unterhaltung gelöst" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
       }
     },
-    "event_reopened" : {
-      "comment" : "Event label when someone reopens the conversation. %@ = actor name.",
+    "connecting" : {
+      "comment" : "Loading indicator shown while bootstrapping the SDK connection.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ reopened the conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ hat die Unterhaltung wieder geöffnet" } }
-      }
-    },
-    "event_joined" : {
-      "comment" : "Event label when an agent joins the conversation. %@ = agent name.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ joined the conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ ist der Unterhaltung beigetreten" } }
-      }
-    },
-    "event_left" : {
-      "comment" : "Event label when an agent leaves the conversation. %@ = agent name.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ left the conversation" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ hat die Unterhaltung verlassen" } }
-      }
-    },
-    "event_assigned" : {
-      "comment" : "Event label when an agent is assigned to the conversation. %@ = agent name.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ was assigned" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%@ wurde zugewiesen" } }
-      }
-    },
-    "event_identified" : {
-      "comment" : "Event label when the visitor is identified/linked to a contact.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "You were identified" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Du wurdest identifiziert" } }
-      }
-    },
-    "event_default_actor" : {
-      "comment" : "Fallback actor name when the event actor cannot be resolved.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Someone" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Jemand" } }
-      }
-    },
-    "reasoning_done" : {
-      "comment" : "Label on a collapsed AI reasoning block after it finished thinking.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Thought about this" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Darüber nachgedacht" } }
-      }
-    },
-    "reasoning_active" : {
-      "comment" : "Label on an AI reasoning block while it is still thinking.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Thinking..." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Denkt nach..." } }
-      }
-    },
-    "file_default_name" : {
-      "comment" : "Fallback name for file attachments without a filename.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "File" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Datei" } }
-      }
-    },
-    "image_accessibility" : {
-      "comment" : "Accessibility label for image attachments in the chat.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Image attachment" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bildanhang" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinden..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecting..."
+          }
+        }
       }
     },
     "conversation_closed" : {
       "comment" : "Message shown instead of input bar when a conversation is spam or deleted/archived.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "This conversation has been closed." } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Diese Unterhaltung wurde geschlossen." } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Unterhaltung wurde geschlossen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This conversation has been closed."
+          }
+        }
       }
     },
-    "rating_prompt" : {
-      "comment" : "Title above the star rating in a resolved conversation.",
+    "conversation_default_title" : {
+      "comment" : "Fallback title for conversations without a title.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "How was your experience?" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Wie war deine Erfahrung?" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterhaltung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation"
+          }
+        }
+      }
+    },
+    "conversation_title" : {
+      "comment" : "Navigation title inside an open conversation/chat view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterhaltung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conversation"
+          }
+        }
+      }
+    },
+    "creating_conversation" : {
+      "comment" : "Loading indicator shown while a new conversation is being created.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterhaltung wird erstellt..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting up your conversation..."
+          }
+        }
+      }
+    },
+    "discard" : {
+      "comment" : "Button to discard a failed pending message.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwerfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard"
+          }
+        }
+      }
+    },
+    "empty_chat_description" : {
+      "comment" : "Subtitle in empty chat encouraging the user to send a message.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sende eine Nachricht und wir melden uns bald."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send a message below and we'll get back to you soon."
+          }
+        }
+      }
+    },
+    "empty_chat_title" : {
+      "comment" : "Title in empty chat when no messages have been sent yet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starte die Unterhaltung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start the conversation"
+          }
+        }
+      }
+    },
+    "empty_conversations_description" : {
+      "comment" : "Description shown below the empty conversations title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tippe unten um eine Unterhaltung zu starten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap below to start a conversation and get help."
+          }
+        }
+      }
+    },
+    "empty_conversations_title" : {
+      "comment" : "Title shown when the conversation list is empty.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Unterhaltungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Conversations"
+          }
+        }
+      }
+    },
+    "error_connection" : {
+      "comment" : "Title shown when the SDK fails to connect during bootstrap.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindungsfehler"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection Error"
+          }
+        }
+      }
+    },
+    "error_title" : {
+      "comment" : "Title shown when an operation fails in the chat view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etwas ist schiefgelaufen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong"
+          }
+        }
+      }
+    },
+    "event_assigned" : {
+      "comment" : "Event label when an agent is assigned to the conversation. %@ = agent name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wurde zugewiesen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ was assigned"
+          }
+        }
+      }
+    },
+    "event_default_actor" : {
+      "comment" : "Fallback actor name when the event actor cannot be resolved.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jemand"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Someone"
+          }
+        }
+      }
+    },
+    "event_identified" : {
+      "comment" : "Event label when the visitor is identified/linked to a contact.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du wurdest identifiziert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You were identified"
+          }
+        }
+      }
+    },
+    "event_joined" : {
+      "comment" : "Event label when an agent joins the conversation. %@ = agent name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist der Unterhaltung beigetreten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ joined the conversation"
+          }
+        }
+      }
+    },
+    "event_left" : {
+      "comment" : "Event label when an agent leaves the conversation. %@ = agent name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Unterhaltung verlassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ left the conversation"
+          }
+        }
+      }
+    },
+    "event_reopened" : {
+      "comment" : "Event label when someone reopens the conversation. %@ = actor name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Unterhaltung wieder geöffnet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ reopened the conversation"
+          }
+        }
+      }
+    },
+    "event_resolved" : {
+      "comment" : "Event label when someone resolves the conversation. %@ = actor name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Unterhaltung gelöst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ resolved the conversation"
+          }
+        }
+      }
+    },
+    "file_default_name" : {
+      "comment" : "Fallback name for file attachments without a filename.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File"
+          }
+        }
+      }
+    },
+    "image_accessibility" : {
+      "comment" : "Accessibility label for image attachments in the chat.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildanhang"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image attachment"
+          }
+        }
+      }
+    },
+    "input_placeholder" : {
+      "comment" : "Placeholder text inside the message input field.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachricht eingeben..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type a message..."
+          }
+        }
+      }
+    },
+    "load_more" : {
+      "comment" : "Button at the bottom of conversation list to load more items.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr laden..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load more..."
+          }
+        }
+      }
+    },
+    "load_older" : {
+      "comment" : "Button to load older messages in the chat timeline.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ältere Nachrichten laden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load older messages"
+          }
+        }
+      }
+    },
+    "loading_conversations" : {
+      "comment" : "Loading indicator shown while fetching the conversation list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade Unterhaltungen..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading conversations..."
+          }
+        }
+      }
+    },
+    "loading_messages" : {
+      "comment" : "Loading indicator shown while fetching messages in a conversation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade Nachrichten..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading messages..."
+          }
+        }
+      }
+    },
+    "new_conversation_cta" : {
+      "comment" : "Label on the big CTA button to start a new support conversation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Unterhaltung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Conversation"
+          }
+        }
       }
     },
     "rating_comment_placeholder" : {
       "comment" : "Placeholder in the optional comment text field after selecting a rating.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave a comment (optional)" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kommentar hinterlassen (optional)" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommentar hinterlassen (optional)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave a comment (optional)"
+          }
+        }
+      }
+    },
+    "rating_prompt" : {
+      "comment" : "Title above the star rating in a resolved conversation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie war deine Erfahrung?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How was your experience?"
+          }
+        }
       }
     },
     "rating_submit" : {
       "comment" : "Button to submit the conversation rating.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Submit" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Absenden" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Absenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Submit"
+          }
+        }
       }
     },
     "rating_thanks" : {
       "comment" : "Message shown after the user has submitted their rating.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Thanks for your feedback!" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Danke für dein Feedback!" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danke für dein Feedback 🫶🏼"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thanks for your feedback 🫶🏼"
+          }
+        }
+      }
+    },
+    "reasoning_active" : {
+      "comment" : "Label on an AI reasoning block while it is still thinking.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denkt nach..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thinking..."
+          }
+        }
+      }
+    },
+    "reasoning_done" : {
+      "comment" : "Label on a collapsed AI reasoning block after it finished thinking.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Darüber nachgedacht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thought about this"
+          }
+        }
+      }
+    },
+    "reply_sent" : {
+      "comment" : "Label shown when the AI has finished and sent a reply.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Antwort gesendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply sent"
+          }
+        }
+      }
+    },
+    "retry" : {
+      "comment" : "Button label to retry a failed operation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        }
+      }
+    },
+    "retry_short" : {
+      "comment" : "Short retry label on failed pending messages.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nochmal"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "seen" : {
+      "comment" : "Label next to seen/read receipt avatars.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesehen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seen"
+          }
+        }
+      }
+    },
+    "send" : {
+      "comment" : "Accessibility label for the send message button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send"
+          }
+        }
+      }
+    },
+    "sender_default" : {
+      "comment" : "Fallback name when agent identity cannot be resolved.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        }
+      }
+    },
+    "sender_you" : {
+      "comment" : "Label for the current visitor as message sender in previews.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You"
+          }
+        }
+      }
+    },
+    "sending" : {
+      "comment" : "Status label on a message that is currently being sent.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senden..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending..."
+          }
+        }
+      }
+    },
+    "status_open" : {
+      "comment" : "Badge label for open/active conversations.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        }
+      }
+    },
+    "status_resolved" : {
+      "comment" : "Badge label for resolved/closed conversations.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gelöst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resolved"
+          }
+        }
+      }
+    },
+    "support_title" : {
+      "comment" : "Navigation title for the main support conversation list.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support"
+          }
+        }
+      }
+    },
+    "swipe_mark_read" : {
+      "comment" : "Swipe action label to mark a conversation as read.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gelesen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read"
+          }
+        }
+      }
+    },
+    "swipe_rate" : {
+      "comment" : "Swipe action label to rate a conversation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewerten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rate"
+          }
+        }
+      }
+    },
+    "typing_indicator" : {
+      "comment" : "Shows who is typing. %@ is replaced with the agent name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ schreibt..."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is typing..."
+          }
+        }
       }
     }
   },
