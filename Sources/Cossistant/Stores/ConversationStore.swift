@@ -61,6 +61,21 @@ public final class ConversationStore {
     return response
   }
 
+  // MARK: - Convenience for UI
+
+  /// Total number of conversations.
+  public var totalCount: Int { conversations.count }
+
+  /// Open conversations only.
+  public var openConversations: [Conversation] {
+    conversations.filter { $0.status == .open }
+  }
+
+  /// Returns a conversation by ID, if loaded.
+  public func conversation(byId id: String) -> Conversation? {
+    conversations.first { $0.id == id }
+  }
+
   // MARK: - WebSocket Event Handling
 
   func handleConversationCreated(_ payload: ConversationCreatedPayload) {
@@ -70,8 +85,14 @@ public final class ConversationStore {
 
   func handleConversationUpdated(_ payload: ConversationUpdatedPayload) {
     guard let index = conversations.firstIndex(where: { $0.id == payload.conversationId }) else { return }
-    // Re-fetch would be cleaner, but for now we just trigger a reload signal
-    // by replacing the conversation with an updated copy from the next load
-    _ = index
+    if let title = payload.updates.title {
+      conversations[index].title = title
+    }
+    if let status = payload.updates.status {
+      conversations[index].status = status
+    }
+    if let deletedAt = payload.updates.deletedAt {
+      conversations[index].deletedAt = deletedAt
+    }
   }
 }

@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Identify Contact
 
 public struct IdentifyContactRequest: Codable, Sendable {
+  public let visitorId: String?
   public let externalId: String?
   public let name: String?
   public let email: String?
@@ -11,6 +12,7 @@ public struct IdentifyContactRequest: Codable, Sendable {
   public let contactOrganizationId: String?
 
   public init(
+    visitorId: String? = nil,
     externalId: String? = nil,
     name: String? = nil,
     email: String? = nil,
@@ -18,6 +20,7 @@ public struct IdentifyContactRequest: Codable, Sendable {
     metadata: VisitorMetadata? = nil,
     contactOrganizationId: String? = nil
   ) {
+    self.visitorId = visitorId
     self.externalId = externalId
     self.name = name
     self.email = email

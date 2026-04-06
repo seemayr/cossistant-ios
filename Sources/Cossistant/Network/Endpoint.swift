@@ -14,12 +14,13 @@ enum Endpoint {
   case identifyContact
   case updateVisitorMetadata(visitorId: String)
   case generateUploadURL
+  case visitorActivity
 
   var method: String {
     switch self {
     case .getWebsite, .listConversations, .getConversation, .getTimeline:
       return "GET"
-    case .createConversation, .sendMessage, .identifyContact, .generateUploadURL:
+    case .createConversation, .sendMessage, .identifyContact, .generateUploadURL, .visitorActivity:
       return "POST"
     case .markSeen, .setTyping, .updateVisitorMetadata:
       return "PATCH"
@@ -54,6 +55,8 @@ enum Endpoint {
       return "/visitors/\(visitorId)/metadata"
     case .generateUploadURL:
       return "/upload/generate-url"
+    case .visitorActivity:
+      return "/visitors/activity"
     }
   }
 

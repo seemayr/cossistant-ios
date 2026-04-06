@@ -4,15 +4,15 @@ import Foundation
 
 public struct Conversation: Codable, Sendable, Identifiable {
   public let id: String
-  public let title: String?
+  public var title: String?
   public let createdAt: String
   public let updatedAt: String
   public let visitorId: String
   public let websiteId: String
-  public let status: ConversationStatus
-  public let visitorRating: Int?
-  public let visitorRatingAt: String?
-  public let deletedAt: String?
+  public var status: ConversationStatus
+  public var visitorRating: Int?
+  public var visitorRatingAt: String?
+  public var deletedAt: String?
   public let visitorLastSeenAt: String?
   public let lastTimelineItem: TimelineItem?
 }

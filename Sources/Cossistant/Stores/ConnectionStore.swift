@@ -15,6 +15,28 @@ public final class ConnectionStore {
   /// AI processing state keyed by conversation ID.
   public private(set) var aiProcessing: [String: AIProcessingState] = [:]
 
+  // MARK: - Convenience for UI
+
+  /// Whether an agent (human or AI) is typing in a specific conversation.
+  public func isAgentTyping(in conversationId: String) -> Bool {
+    typingIndicators[conversationId] != nil
+  }
+
+  /// The typing preview text for a conversation, if any.
+  public func typingPreview(for conversationId: String) -> String? {
+    typingIndicators[conversationId]?.preview
+  }
+
+  /// Whether AI is processing in a specific conversation.
+  public func isAIProcessing(in conversationId: String) -> Bool {
+    aiProcessing[conversationId] != nil
+  }
+
+  /// The AI processing status message for a conversation, if any.
+  public func aiStatusMessage(for conversationId: String) -> String? {
+    aiProcessing[conversationId]?.message
+  }
+
   // MARK: - Connection State
 
   func setConnected(_ connected: Bool) {

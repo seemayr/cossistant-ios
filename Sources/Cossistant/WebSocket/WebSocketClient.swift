@@ -64,7 +64,9 @@ actor WebSocketClient {
     }
     components.queryItems = queryItems
 
-    let wsTask = session.webSocketTask(with: components.url!)
+    var request = URLRequest(url: components.url!)
+    request.setValue(configuration.origin, forHTTPHeaderField: "Origin")
+    let wsTask = session.webSocketTask(with: request)
     wsTask.resume()
     self.task = wsTask
 

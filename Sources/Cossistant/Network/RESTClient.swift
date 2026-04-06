@@ -76,6 +76,7 @@ actor RESTClient {
     request.httpMethod = endpoint.method
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     request.setValue(configuration.apiKey, forHTTPHeaderField: "X-Public-Key")
+    request.setValue(configuration.origin, forHTTPHeaderField: "Origin")
 
     if let visitorId {
       request.setValue(visitorId, forHTTPHeaderField: "X-Visitor-Id")

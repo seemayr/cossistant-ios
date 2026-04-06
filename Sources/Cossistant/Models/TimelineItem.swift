@@ -231,10 +231,74 @@ public struct SendMessageResponse: Codable, Sendable {
   public let item: TimelineItem
 }
 
-// MARK: - Delivery Status (for optimistic updates)
+// MARK: - Pending Message (for optimistic updates)
 
-public enum MessageDeliveryStatus: Sendable {
-  case pending(localId: String)
-  case sent(serverId: String)
-  case failed(Error)
+/// A message that has been optimistically added to the timeline but not yet confirmed by the server.
+public struct PendingMessage: Sendable, Identifiable {
+  public let id: String
+  public let conversationId: String
+  public let text: String
+  public let createdAt: Date
+  public var status: DeliveryStatus
+
+  public enum DeliveryStatus: Sendable {
+    case sending
+    case sent(serverId: String)
+    case failed(String)
+  }
+
+  /// Converts to a TimelineItem for display in the timeline.
+  public func toTimelineItem(visitorId: String?, organizationId: String) -> TimelineItem {
+    TimelineItem(
+      id: id,
+      conversationId: conversationId,
+      organizationId: organizationId,
+      visibility: .public,
+      type: .message,
+      text: text,
+      tool: nil,
+      parts: [.text(TextPart(text: text))],
+      userId: nil,
+      aiAgentId: nil,
+      visitorId: visitorId,
+      createdAt: ISO8601DateFormatter().string(from: createdAt),
+      deletedAt: nil
+    )
+  }
+}
+
+// MARK: - File Upload
+
+public struct GenerateUploadURLRequest: Codable, Sendable {
+  public let fileName: String
+  public let contentType: String
+  public let conversationId: String
+
+  public init(fileName: String, contentType: String, conversationId: String) {
+    self.fileName = fileName
+    self.contentType = contentType
+    self.conversationId = conversationId
+  }
+}
+
+public struct GenerateUploadURLResponse: Codable, Sendable {
+  public let url: String
+  public let fileUrl: String
+}
+
+// MARK: - Activity Tracking
+
+public struct VisitorActivityRequest: Codable, Sendable {
+  public let sessionId: String
+  public let activityType: String
+
+  public init(sessionId: String, activityType: String) {
+    self.sessionId = sessionId
+    self.activityType = activityType
+  }
+}
+
+public struct VisitorActivityResponse: Codable, Sendable {
+  public let ok: Bool
+  public let acceptedAt: String
 }

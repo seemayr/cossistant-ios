@@ -108,6 +108,7 @@ public final class CossistantClient {
     metadata: VisitorMetadata? = nil
   ) async throws {
     let request = IdentifyContactRequest(
+      visitorId: visitorId,
       externalId: externalId,
       name: name,
       email: email,
@@ -124,6 +125,62 @@ public final class CossistantClient {
     guard let visitorId else { throw CossistantError.notBootstrapped }
     let request = UpdateVisitorMetadataRequest(metadata: metadata)
     try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
+  }
+
+  // MARK: - File Upload
+
+  /// Uploads a file and returns the hosted URL to attach to a message.
+  /// 1. Gets a presigned S3 URL from the API
+  /// 2. PUTs the file data to S3
+  /// 3. Returns the public file URL
+  public func uploadFile(
+    data: Data,
+    fileName: String,
+    contentType: String,
+    conversationId: String
+  ) async throws -> String {
+    let request = GenerateUploadURLRequest(
+      fileName: fileName,
+      contentType: contentType,
+      conversationId: conversationId
+    )
+    let response: GenerateUploadURLResponse = try await rest.request(
+      .generateUploadURL, body: request
+    )
+
+    // PUT to S3
+    guard let uploadURL = URL(string: response.url) else {
+      throw CossistantError.networkError(underlying: URLError(.badURL))
+    }
+    var s3Request = URLRequest(url: uploadURL)
+    s3Request.httpMethod = "PUT"
+    s3Request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+    s3Request.httpBody = data
+
+    let (_, s3Response) = try await URLSession.shared.data(for: s3Request)
+    guard let httpResponse = s3Response as? HTTPURLResponse,
+          (200...299).contains(httpResponse.statusCode) else {
+      throw CossistantError.httpError(
+        statusCode: (s3Response as? HTTPURLResponse)?.statusCode ?? 0,
+        body: nil
+      )
+    }
+
+    return response.fileUrl
+  }
+
+  // MARK: - Activity Tracking
+
+  /// Sends a visitor activity event (heartbeat, focus, etc.).
+  public func sendActivity(
+    sessionId: String,
+    activityType: String = "heartbeat"
+  ) async throws {
+    let request = VisitorActivityRequest(
+      sessionId: sessionId,
+      activityType: activityType
+    )
+    try await rest.requestVoid(.visitorActivity, body: request)
   }
 
   // MARK: - Disconnect

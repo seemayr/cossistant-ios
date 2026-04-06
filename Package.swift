@@ -18,5 +18,9 @@ let package = Package(
     .target(
       name: "Cossistant"
     ),
+    .testTarget(
+      name: "CossistantTests",
+      dependencies: ["Cossistant"]
+    ),
   ]
 )

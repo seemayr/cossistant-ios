@@ -8,6 +8,9 @@ public final class TimelineStore {
   /// Timeline items for the currently active conversation, oldest first.
   public private(set) var items: [TimelineItem] = []
 
+  /// Pending messages awaiting server confirmation.
+  public private(set) var pendingMessages: [PendingMessage] = []
+
   /// Whether older messages can be loaded.
   public private(set) var hasMore = false
 
@@ -19,7 +22,7 @@ public final class TimelineStore {
 
   private var nextCursor: String?
   private let pageSize = 50
-  private let rest: RESTClient
+  let rest: RESTClient
 
   init(rest: RESTClient) {
     self.rest = rest
@@ -31,6 +34,7 @@ public final class TimelineStore {
   public func load(conversationId: String) async throws {
     activeConversationId = conversationId
     nextCursor = nil
+    pendingMessages = []
     isLoading = true
     defer { isLoading = false }
 
@@ -58,26 +62,60 @@ public final class TimelineStore {
     hasMore = response.hasNextPage
   }
 
-  /// Sends a text message to the active conversation.
+  /// Sends a text message with optimistic update.
+  /// The message appears in `pendingMessages` immediately,
+  /// then moves to `items` when the server confirms.
   public func sendMessage(text: String, visitorId: String?) async throws {
     guard let conversationId = activeConversationId else {
       throw CossistantError.notBootstrapped
     }
 
-    let request = SendMessageRequest(
+    // Create pending message for immediate UI display
+    let localId = "pending_\(UUID().uuidString)"
+    let pending = PendingMessage(
+      id: localId,
       conversationId: conversationId,
       text: text,
-      visitorId: visitorId
+      createdAt: Date(),
+      status: .sending
     )
+    pendingMessages.append(pending)
 
-    let response: SendMessageResponse = try await rest.request(
-      .sendMessage, body: request
-    )
+    do {
+      let request = SendMessageRequest(
+        conversationId: conversationId,
+        text: text,
+        visitorId: visitorId
+      )
+      let response: SendMessageResponse = try await rest.request(
+        .sendMessage, body: request
+      )
 
-    // Append if not already present (WS may have delivered it first)
-    if !items.contains(where: { $0.id == response.item.id }) {
-      items.append(response.item)
+      // Remove pending, add confirmed item
+      pendingMessages.removeAll { $0.id == localId }
+      if !items.contains(where: { $0.id == response.item.id }) {
+        items.append(response.item)
+      }
+    } catch {
+      // Mark as failed so UI can show retry option
+      if let index = pendingMessages.firstIndex(where: { $0.id == localId }) {
+        pendingMessages[index].status = .failed(error.localizedDescription)
+      }
+      throw error
     }
+  }
+
+  /// Retries sending a failed pending message.
+  public func retrySend(pendingId: String, visitorId: String?) async throws {
+    guard let index = pendingMessages.firstIndex(where: { $0.id == pendingId }) else { return }
+    let message = pendingMessages[index]
+    pendingMessages.remove(at: index)
+    try await sendMessage(text: message.text, visitorId: visitorId)
+  }
+
+  /// Discards a failed pending message.
+  public func discardPending(pendingId: String) {
+    pendingMessages.removeAll { $0.id == pendingId }
   }
 
   /// Marks the active conversation as seen.
@@ -107,6 +145,7 @@ public final class TimelineStore {
   /// Clears the timeline (e.g. when switching conversations).
   public func clear() {
     items = []
+    pendingMessages = []
     activeConversationId = nil
     nextCursor = nil
     hasMore = false
@@ -116,6 +155,16 @@ public final class TimelineStore {
 
   func handleTimelineItemCreated(_ payload: TimelineItemEventPayload) {
     guard payload.conversationId == activeConversationId else { return }
+
+    // Reconcile: if WS delivers a message we sent, remove the pending version
+    if let visitorId = payload.item.visitorId,
+       !visitorId.isEmpty,
+       let pendingIndex = pendingMessages.firstIndex(where: {
+         $0.text == payload.item.text && $0.conversationId == payload.conversationId
+       }) {
+      pendingMessages.remove(at: pendingIndex)
+    }
+
     guard !items.contains(where: { $0.id == payload.item.id }) else { return }
     items.append(payload.item)
   }
