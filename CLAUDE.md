@@ -161,6 +161,8 @@ When implementing new features or evaluating approaches, **always check sosumi f
 
 ## Building & Testing
 
+**IMPORTANT:** Only run `swift test` when the user explicitly asks for it. Do NOT run tests automatically after every change. Always run `swift build` to verify compilation.
+
 This is a Swift Package — use the CLI directly. No Xcode project needed.
 
 ```sh
@@ -194,6 +196,24 @@ The package uses Swift 6.2 strict concurrency. Common issues to watch for:
 - `@MainActor` isolation: stores are `@MainActor`, so test helper functions that create them must also be `@MainActor`
 - `Sendable` conformance: all models are `Sendable`, new types must be too
 - Actor isolation boundaries: hopping between actors requires `await`
+
+## Localization
+
+Uses the RString pattern (same as PlayUs). All user-facing strings are localized via `R.string(.key)`.
+
+**Supported languages:** English (en), German (de)
+
+**Files:**
+- `Sources/Cossistant/R.swift` — `R.string(.key)` accessor + `RString` enum
+- `Sources/Cossistant/Resources/Localizable.xcstrings` — translations JSON
+
+**Rules:**
+- Never hardcode user-facing strings in views — always use `R.string(.key)`
+- Key names describe WHERE/HOW used (not WHAT they say): `error_connection` not `connection_error_text`
+- `%@` for parameters: `R.string(.typing_indicator, agentName)`
+- Add a `comment` to every key in xcstrings explaining context
+- When adding new strings, add BOTH en and de translations
+- R.swift lives outside `Resources/` (SPM treats Resources as non-source)
 
 ## Environment
 

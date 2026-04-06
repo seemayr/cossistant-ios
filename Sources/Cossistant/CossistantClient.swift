@@ -13,6 +13,9 @@ public final class CossistantClient {
   /// Observable store for connection state, typing indicators, and AI processing.
   public let connection: ConnectionStore
 
+  /// Agent registry for resolving userId/aiAgentId → name, image, online status.
+  public let agents: AgentRegistry
+
   /// The SDK configuration.
   public nonisolated let configuration: Configuration
 
@@ -31,10 +34,12 @@ public final class CossistantClient {
     self.rest = RESTClient(configuration: configuration)
     self.storage = VisitorStorage()
 
+    let agentRegistry = AgentRegistry()
     let conversationStore = ConversationStore(rest: rest)
     let timelineStore = TimelineStore(rest: rest)
-    let connectionStore = ConnectionStore()
+    let connectionStore = ConnectionStore(agents: agentRegistry)
 
+    self.agents = agentRegistry
     self.conversations = conversationStore
     self.timeline = timelineStore
     self.connection = connectionStore
@@ -61,7 +66,9 @@ public final class CossistantClient {
           connection.handleAIProgress(payload)
         case .aiAgentProcessingCompleted(let payload):
           connection.handleAICompleted(payload)
-        case .conversationSeen, .visitorIdentified, .connectionEstablished, .unknown:
+        case .conversationSeen(let payload):
+          connection.handleSeen(payload)
+        case .visitorIdentified, .connectionEstablished, .unknown:
           break
         }
       },
@@ -75,6 +82,8 @@ public final class CossistantClient {
 
   /// Initializes the SDK: fetches website config, creates/retrieves visitor, connects WebSocket.
   public func bootstrap() async throws {
+    SupportLogger.bootstrapStarted()
+
     // Restore visitor ID from storage if available
     if let stored = storage.visitorId {
       await rest.setVisitorId(stored)
@@ -83,6 +92,7 @@ public final class CossistantClient {
     let response: PublicWebsiteResponse = try await rest.request(.getWebsite)
     website = response
     visitorId = response.visitor.id
+    agents.populate(from: response)
 
     // Persist visitor ID
     storage.visitorId = response.visitor.id
@@ -90,8 +100,11 @@ public final class CossistantClient {
 
     // Check if visitor is blocked
     guard !response.visitor.isBlocked else {
+      SupportLogger.bootstrapFailed(CossistantError.visitorBlocked)
       throw CossistantError.visitorBlocked
     }
+
+    SupportLogger.bootstrapSuccess(visitorId: response.visitor.id, websiteId: response.id)
 
     // Connect WebSocket
     await webSocket.connect(visitorId: response.visitor.id)

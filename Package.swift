@@ -14,9 +14,14 @@ let package = Package(
       targets: ["Cossistant"]
     ),
   ],
+  dependencies: [
+    .package(url: "https://github.com/SFSafeSymbols/SFSafeSymbols.git", from: "5.3.0"),
+  ],
   targets: [
     .target(
-      name: "Cossistant"
+      name: "Cossistant",
+      dependencies: ["SFSafeSymbols"],
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "CossistantTests",

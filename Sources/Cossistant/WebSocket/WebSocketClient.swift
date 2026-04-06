@@ -43,12 +43,16 @@ actor WebSocketClient {
 
   func disconnect() {
     isIntentionalDisconnect = true
+    SupportLogger.wsDisconnected(reason: "intentional")
     tearDown()
     Task { @MainActor in onConnectionChange(false) }
   }
 
   func send(_ text: String) async throws {
-    guard let task else { throw CossistantError.notConnected }
+    guard let task else {
+      SupportLogger.wsSendFailed(CossistantError.notConnected)
+      throw CossistantError.notConnected
+    }
     try await task.send(.string(text))
   }
 
@@ -64,7 +68,10 @@ actor WebSocketClient {
     }
     components.queryItems = queryItems
 
-    var request = URLRequest(url: components.url!)
+    let url = components.url!
+    SupportLogger.wsConnecting(url: url.absoluteString)
+
+    var request = URLRequest(url: url)
     request.setValue(configuration.origin, forHTTPHeaderField: "Origin")
     let wsTask = session.webSocketTask(with: request)
     wsTask.resume()
@@ -78,6 +85,7 @@ actor WebSocketClient {
       await self?.heartbeatLoop()
     }
 
+    SupportLogger.wsConnected()
     Task { @MainActor in onConnectionChange(true) }
   }
 
@@ -108,6 +116,7 @@ actor WebSocketClient {
         }
       } catch {
         if !Task.isCancelled && !isIntentionalDisconnect {
+          SupportLogger.wsReceiveError(error)
           Task { @MainActor in onConnectionChange(false) }
           await attemptReconnect()
         }
@@ -119,12 +128,45 @@ actor WebSocketClient {
   private func handleTextMessage(_ text: String) {
     if text == "pong" { return }
 
-    guard let data = text.data(using: .utf8) else { return }
+    guard let data = text.data(using: .utf8) else {
+      SupportLogger.wsEventParseFailed(text)
+      return
+    }
     handleDataMessage(data)
   }
 
   private func handleDataMessage(_ data: Data) {
-    guard let event = WebSocketEventParser.parse(from: data) else { return }
+    guard let event = WebSocketEventParser.parse(from: data) else {
+      let raw = String(data: data, encoding: .utf8) ?? "(binary)"
+      SupportLogger.wsEventParseFailed(raw)
+      return
+    }
+
+    switch event {
+    case .unknown(let type):
+      SupportLogger.wsEventReceived("unknown(\(type))")
+    case .timelineItemCreated:
+      SupportLogger.wsEventReceived("timelineItemCreated")
+    case .timelineItemUpdated:
+      SupportLogger.wsEventReceived("timelineItemUpdated")
+    case .conversationCreated:
+      SupportLogger.wsEventReceived("conversationCreated")
+    case .conversationUpdated:
+      SupportLogger.wsEventReceived("conversationUpdated")
+    case .conversationTyping:
+      SupportLogger.wsEventReceived("conversationTyping")
+    case .conversationSeen:
+      SupportLogger.wsEventReceived("conversationSeen")
+    case .aiAgentProcessingProgress:
+      SupportLogger.wsEventReceived("aiAgentProcessingProgress")
+    case .aiAgentProcessingCompleted:
+      SupportLogger.wsEventReceived("aiAgentProcessingCompleted")
+    case .connectionEstablished:
+      SupportLogger.wsEventReceived("connectionEstablished")
+    case .visitorIdentified:
+      SupportLogger.wsEventReceived("visitorIdentified")
+    }
+
     reconnectionPolicy.reset()
     Task { @MainActor in onEvent(event) }
   }
@@ -138,6 +180,7 @@ actor WebSocketClient {
         try await task?.send(.string("ping"))
       } catch {
         if !Task.isCancelled && !isIntentionalDisconnect {
+          SupportLogger.wsReceiveError(error)
           await attemptReconnect()
         }
         return
@@ -148,10 +191,15 @@ actor WebSocketClient {
   // MARK: - Reconnection
 
   private func attemptReconnect() async {
-    guard !isIntentionalDisconnect, reconnectionPolicy.shouldRetry else { return }
+    guard !isIntentionalDisconnect, reconnectionPolicy.shouldRetry else {
+      SupportLogger.wsDisconnected(reason: isIntentionalDisconnect ? "intentional" : "max attempts reached")
+      return
+    }
 
     let delay = reconnectionPolicy.currentDelay
+    let attempt = reconnectionPolicy.attempt + 1
     reconnectionPolicy.recordAttempt()
+    SupportLogger.wsReconnecting(attempt: attempt, delay: delay)
 
     do {
       try await Task.sleep(for: .seconds(delay))

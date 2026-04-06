@@ -5,8 +5,26 @@ import Observation
 @MainActor
 @Observable
 public final class ConversationStore {
-  /// All conversations, most recently updated first.
+  /// All conversations, raw order from API.
   public private(set) var conversations: [Conversation] = []
+
+  /// Conversations sorted: open first, then resolved, both by most recent.
+  /// Filters out archived/deleted and empty ghost conversations.
+  /// Matches web widget's `shouldDisplayConversation` filter.
+  public var sorted: [Conversation] {
+    let displayable = conversations.filter(shouldDisplay)
+    let open = displayable.filter { $0.status == .open }.sorted { $0.updatedAt > $1.updatedAt }
+    let resolved = displayable.filter { $0.status == .resolved }.sorted { $0.updatedAt > $1.updatedAt }
+    return open + resolved
+  }
+
+  /// Matches web widget: hide deleted + hide conversations with no title and no last message.
+  private func shouldDisplay(_ conversation: Conversation) -> Bool {
+    if conversation.deletedAt != nil { return false }
+    let hasTitle = !(conversation.title?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
+    let hasLastMessage = !(conversation.lastTimelineItem?.text?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
+    return hasTitle || hasLastMessage
+  }
 
   /// Current pagination state.
   public private(set) var hasMore = false
@@ -69,6 +87,11 @@ public final class ConversationStore {
   /// Open conversations only.
   public var openConversations: [Conversation] {
     conversations.filter { $0.status == .open }
+  }
+
+  /// Resolved conversations only.
+  public var resolvedConversations: [Conversation] {
+    conversations.filter { $0.status == .resolved }
   }
 
   /// Returns a conversation by ID, if loaded.

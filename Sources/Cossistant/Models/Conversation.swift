@@ -17,6 +17,14 @@ public struct Conversation: Codable, Sendable, Identifiable {
   public let lastTimelineItem: TimelineItem?
 }
 
+extension Conversation {
+  /// Whether this conversation is closed (resolved, spam, or deleted/archived).
+  /// Matches the web widget's `isConversationClosed` logic.
+  public var isClosed: Bool {
+    status == .resolved || status == .spam || deletedAt != nil
+  }
+}
+
 public enum ConversationStatus: String, Codable, Sendable {
   case open
   case resolved

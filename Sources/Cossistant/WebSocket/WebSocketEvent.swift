@@ -84,44 +84,62 @@ public struct AIProcessingCompletedPayload: Codable, Sendable {
 // MARK: - Event Parsing
 
 enum WebSocketEventParser {
+  /// Parses a WebSocket message.
+  /// The server sends events as `{ "type": "eventName", "payload": { ... } }`.
+  /// We extract the payload and decode each event type from it.
   static func parse(from data: Data) -> WebSocketEvent? {
     guard let envelope = try? JSONDecoder().decode(EventEnvelope.self, from: data) else {
       return nil
     }
 
+    // The actual event data is nested under "payload".
+    // If no payload key exists, fall back to the root (for test fixtures / backwards compat).
+    let payloadData: Data
+    if let payload = envelope.payload {
+      guard let encoded = try? JSONSerialization.data(withJSONObject: payload) else {
+        return .unknown(type: envelope.type)
+      }
+      payloadData = encoded
+    } else {
+      payloadData = data
+    }
+
     let decoder = JSONDecoder()
 
     switch envelope.type {
+    case "CONNECTION_ESTABLISHED":
+      return .connectionEstablished(connectionId: "")
+
     case "conversationCreated":
-      guard let payload = try? decoder.decode(ConversationCreatedPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(ConversationCreatedPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .conversationCreated(payload)
 
     case "conversationUpdated":
-      guard let payload = try? decoder.decode(ConversationUpdatedPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(ConversationUpdatedPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .conversationUpdated(payload)
 
     case "conversationSeen":
-      guard let payload = try? decoder.decode(ConversationSeenPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(ConversationSeenPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .conversationSeen(payload)
 
     case "conversationTyping":
-      guard let payload = try? decoder.decode(ConversationTypingPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(ConversationTypingPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .conversationTyping(payload)
 
     case "timelineItemCreated":
-      guard let payload = try? decoder.decode(TimelineItemEventPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(TimelineItemEventPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .timelineItemCreated(payload)
 
     case "timelineItemUpdated":
-      guard let payload = try? decoder.decode(TimelineItemEventPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(TimelineItemEventPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .timelineItemUpdated(payload)
 
     case "aiAgentProcessingProgress":
-      guard let payload = try? decoder.decode(AIProcessingProgressPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(AIProcessingProgressPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .aiAgentProcessingProgress(payload)
 
     case "aiAgentProcessingCompleted":
-      guard let payload = try? decoder.decode(AIProcessingCompletedPayload.self, from: data) else { return .unknown(type: envelope.type) }
+      guard let payload = try? decoder.decode(AIProcessingCompletedPayload.self, from: payloadData) else { return .unknown(type: envelope.type) }
       return .aiAgentProcessingCompleted(payload)
 
     case "visitorIdentified":
@@ -134,8 +152,63 @@ enum WebSocketEventParser {
   }
 }
 
-/// Minimal envelope to extract the event type before full parsing.
+/// Envelope that extracts the type and optional nested payload.
+/// Server format: `{ "type": "eventName", "payload": { ... } }`
 private struct EventEnvelope: Codable {
   let type: String
   let visitorId: String?
+  let payload: [String: Any]?
+
+  enum CodingKeys: String, CodingKey {
+    case type, visitorId, payload
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    type = try container.decode(String.self, forKey: .type)
+    visitorId = try container.decodeIfPresent(String.self, forKey: .visitorId)
+
+    // Decode payload as raw dictionary
+    if let payloadContainer = try? container.decode(AnyCodable.self, forKey: .payload) {
+      payload = payloadContainer.value as? [String: Any]
+    } else {
+      payload = nil
+    }
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(type, forKey: .type)
+    try container.encodeIfPresent(visitorId, forKey: .visitorId)
+  }
+}
+
+/// Helper to decode arbitrary JSON values.
+private struct AnyCodable: Codable {
+  let value: Any
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let dict = try? container.decode([String: AnyCodable].self) {
+      value = dict.mapValues { $0.value }
+    } else if let array = try? container.decode([AnyCodable].self) {
+      value = array.map { $0.value }
+    } else if let string = try? container.decode(String.self) {
+      value = string
+    } else if let int = try? container.decode(Int.self) {
+      value = int
+    } else if let double = try? container.decode(Double.self) {
+      value = double
+    } else if let bool = try? container.decode(Bool.self) {
+      value = bool
+    } else if container.decodeNil() {
+      value = NSNull()
+    } else {
+      value = NSNull()
+    }
+  }
+
+  func encode(to encoder: Encoder) throws {
+    // Not needed for our use case
+  }
 }

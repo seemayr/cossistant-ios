@@ -8,6 +8,28 @@ public final class TimelineStore {
   /// Timeline items for the currently active conversation, oldest first.
   public private(set) var items: [TimelineItem] = []
 
+  /// Widget-visible tool names — only these tools are shown to visitors.
+  /// Matches web widget's `TOOL_WIDGET_ACTIVITY_REGISTRY`.
+  private static let widgetVisibleTools: Set<String> = ["searchKnowledgeBase"]
+
+  /// Items filtered for visitor display.
+  /// Matches the web widget's `isBlockedTimelineEventForVisitor` + tool registry.
+  public var visibleItems: [TimelineItem] {
+    items.filter { item in
+      guard item.visibility == .public else { return false }
+      if item.type == .identification { return false }
+      if item.type == .tool {
+        // Only show widget-registered tools
+        let toolName = item.tool ?? item.parts.compactMap { part -> String? in
+          if case .tool(let t) = part { return t.toolName }
+          return nil
+        }.first
+        return toolName.map { Self.widgetVisibleTools.contains($0) } ?? false
+      }
+      return true
+    }
+  }
+
   /// Pending messages awaiting server confirmation.
   public private(set) var pendingMessages: [PendingMessage] = []
 
@@ -67,8 +89,11 @@ public final class TimelineStore {
   /// then moves to `items` when the server confirms.
   public func sendMessage(text: String, visitorId: String?) async throws {
     guard let conversationId = activeConversationId else {
+      SupportLogger.storeError("Timeline", action: "sendMessage", error: CossistantError.notBootstrapped)
       throw CossistantError.notBootstrapped
     }
+
+    SupportLogger.storeAction("Timeline", action: "sendMessage to \(conversationId) (visitorId: \(visitorId ?? "nil"))")
 
     // Create pending message for immediate UI display
     let localId = "pending_\(UUID().uuidString)"
@@ -91,12 +116,15 @@ public final class TimelineStore {
         .sendMessage, body: request
       )
 
+      SupportLogger.storeAction("Timeline", action: "sendMessage OK — item id: \(response.item.id ?? "nil")")
+
       // Remove pending, add confirmed item
       pendingMessages.removeAll { $0.id == localId }
       if !items.contains(where: { $0.id == response.item.id }) {
         items.append(response.item)
       }
     } catch {
+      SupportLogger.storeError("Timeline", action: "sendMessage", error: error)
       // Mark as failed so UI can show retry option
       if let index = pendingMessages.firstIndex(where: { $0.id == localId }) {
         pendingMessages[index].status = .failed(error.localizedDescription)

@@ -25,39 +25,45 @@ actor RESTClient {
   func request<T: Decodable & Sendable>(
     _ endpoint: Endpoint
   ) async throws -> T {
+    SupportLogger.requestStarted(endpoint.method, path: endpoint.path)
     let urlRequest = try buildRequest(endpoint, body: nil as Data?)
-    let (data, response) = try await execute(urlRequest)
-    try validateResponse(response, data: data, endpoint: endpoint.path)
-    return try decode(data, endpoint: endpoint.path)
+    let (data, response) = try await execute(urlRequest, endpoint: endpoint)
+    try validateResponse(response, data: data, endpoint: endpoint)
+    return try decode(data, endpoint: endpoint)
   }
 
   func request<T: Decodable & Sendable, B: Encodable & Sendable>(
     _ endpoint: Endpoint,
     body: B
   ) async throws -> T {
+    SupportLogger.requestStarted(endpoint.method, path: endpoint.path)
     let bodyData = try encoder.encode(body)
     let urlRequest = try buildRequest(endpoint, body: bodyData)
-    let (data, response) = try await execute(urlRequest)
-    try validateResponse(response, data: data, endpoint: endpoint.path)
-    return try decode(data, endpoint: endpoint.path)
+    let (data, response) = try await execute(urlRequest, endpoint: endpoint)
+    try validateResponse(response, data: data, endpoint: endpoint)
+    return try decode(data, endpoint: endpoint)
   }
 
   func requestVoid(
     _ endpoint: Endpoint
   ) async throws {
+    SupportLogger.requestStarted(endpoint.method, path: endpoint.path)
     let urlRequest = try buildRequest(endpoint, body: nil as Data?)
-    let (data, response) = try await execute(urlRequest)
-    try validateResponse(response, data: data, endpoint: endpoint.path)
+    let (data, response) = try await execute(urlRequest, endpoint: endpoint)
+    try validateResponse(response, data: data, endpoint: endpoint)
+    SupportLogger.requestSuccess(endpoint.method, path: endpoint.path, status: (response as? HTTPURLResponse)?.statusCode ?? 0)
   }
 
   func requestVoid<B: Encodable & Sendable>(
     _ endpoint: Endpoint,
     body: B
   ) async throws {
+    SupportLogger.requestStarted(endpoint.method, path: endpoint.path)
     let bodyData = try encoder.encode(body)
     let urlRequest = try buildRequest(endpoint, body: bodyData)
-    let (data, response) = try await execute(urlRequest)
-    try validateResponse(response, data: data, endpoint: endpoint.path)
+    let (data, response) = try await execute(urlRequest, endpoint: endpoint)
+    try validateResponse(response, data: data, endpoint: endpoint)
+    SupportLogger.requestSuccess(endpoint.method, path: endpoint.path, status: (response as? HTTPURLResponse)?.statusCode ?? 0)
   }
 
   // MARK: - Private Helpers
@@ -86,10 +92,11 @@ actor RESTClient {
     return request
   }
 
-  private func execute(_ request: URLRequest) async throws -> (Data, URLResponse) {
+  private func execute(_ request: URLRequest, endpoint: Endpoint) async throws -> (Data, URLResponse) {
     do {
       return try await session.data(for: request)
     } catch {
+      SupportLogger.requestFailed(endpoint.method, path: endpoint.path, error: error)
       throw CossistantError.networkError(underlying: error)
     }
   }
@@ -97,22 +104,23 @@ actor RESTClient {
   private func validateResponse(
     _ response: URLResponse,
     data: Data,
-    endpoint: String
+    endpoint: Endpoint
   ) throws {
     guard let httpResponse = response as? HTTPURLResponse else { return }
-    guard (200...299).contains(httpResponse.statusCode) else {
-      throw CossistantError.httpError(
-        statusCode: httpResponse.statusCode,
-        body: data
-      )
+    let status = httpResponse.statusCode
+    guard (200...299).contains(status) else {
+      SupportLogger.requestHTTPError(endpoint.method, path: endpoint.path, status: status, body: data)
+      throw CossistantError.httpError(statusCode: status, body: data)
     }
+    SupportLogger.requestSuccess(endpoint.method, path: endpoint.path, status: status)
   }
 
-  private func decode<T: Decodable>(_ data: Data, endpoint: String) throws -> T {
+  private func decode<T: Decodable>(_ data: Data, endpoint: Endpoint) throws -> T {
     do {
       return try decoder.decode(T.self, from: data)
     } catch {
-      throw CossistantError.decodingError(underlying: error, endpoint: endpoint)
+      SupportLogger.decodingError(endpoint.path, error: error)
+      throw CossistantError.decodingError(underlying: error, endpoint: endpoint.path)
     }
   }
 }

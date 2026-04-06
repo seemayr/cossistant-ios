@@ -9,11 +9,19 @@ public final class ConnectionStore {
   public private(set) var isConnected = false
 
   /// Typing indicators keyed by conversation ID.
-  /// Value contains the actor info (userId or aiAgentId) and preview text.
   public private(set) var typingIndicators: [String: TypingIndicator] = [:]
 
   /// AI processing state keyed by conversation ID.
   public private(set) var aiProcessing: [String: AIProcessingState] = [:]
+
+  /// Read receipts keyed by conversation ID.
+  public private(set) var seenReceipts: [String: [SeenReceipt]] = [:]
+
+  private let agents: AgentRegistry
+
+  init(agents: AgentRegistry) {
+    self.agents = agents
+  }
 
   // MARK: - Convenience for UI
 
@@ -27,6 +35,11 @@ public final class ConnectionStore {
     typingIndicators[conversationId]?.preview
   }
 
+  /// The name of whoever is typing in a conversation.
+  public func typingAgentName(for conversationId: String) -> String? {
+    typingIndicators[conversationId]?.name
+  }
+
   /// Whether AI is processing in a specific conversation.
   public func isAIProcessing(in conversationId: String) -> Bool {
     aiProcessing[conversationId] != nil
@@ -35,6 +48,11 @@ public final class ConnectionStore {
   /// The AI processing status message for a conversation, if any.
   public func aiStatusMessage(for conversationId: String) -> String? {
     aiProcessing[conversationId]?.message
+  }
+
+  /// Read receipts for a conversation (who has seen it).
+  public func seen(for conversationId: String) -> [SeenReceipt] {
+    seenReceipts[conversationId] ?? []
   }
 
   // MARK: - Connection State
@@ -47,14 +65,41 @@ public final class ConnectionStore {
 
   func handleTyping(_ payload: ConversationTypingPayload) {
     if payload.isTyping {
+      // Resolve agent identity
+      let agentInfo = agents.agent(forUserId: payload.userId)
+        ?? agents.agent(forAIAgentId: payload.aiAgentId)
+
       typingIndicators[payload.conversationId] = TypingIndicator(
         userId: payload.userId,
         aiAgentId: payload.aiAgentId,
+        name: agentInfo?.name,
+        image: agentInfo?.image,
         preview: payload.visitorPreview
       )
     } else {
       typingIndicators.removeValue(forKey: payload.conversationId)
     }
+  }
+
+  // MARK: - Seen
+
+  func handleSeen(_ payload: ConversationSeenPayload) {
+    let agentInfo = agents.agent(forUserId: payload.actorId)
+      ?? agents.agent(forAIAgentId: payload.actorId)
+
+    let receipt = SeenReceipt(
+      actorType: payload.actorType,
+      actorId: payload.actorId,
+      name: agentInfo?.name,
+      image: agentInfo?.image,
+      lastSeenAt: payload.lastSeenAt
+    )
+
+    var receipts = seenReceipts[payload.conversationId] ?? []
+    // Replace existing receipt from same actor
+    receipts.removeAll { $0.actorId == payload.actorId }
+    receipts.append(receipt)
+    seenReceipts[payload.conversationId] = receipts
   }
 
   // MARK: - AI Processing
@@ -69,7 +114,25 @@ public final class ConnectionStore {
   }
 
   func handleAICompleted(_ payload: AIProcessingCompletedPayload) {
-    aiProcessing.removeValue(forKey: payload.conversationId)
+    if payload.status == "success" {
+      // Show "Reply sent" briefly before clearing, matching web widget behavior
+      aiProcessing[payload.conversationId] = AIProcessingState(
+        aiAgentId: payload.aiAgentId,
+        phase: "done",
+        message: nil
+      )
+      // Auto-clear after a short delay
+      let conversationId = payload.conversationId
+      Task { @MainActor in
+        try? await Task.sleep(for: .seconds(2.5))
+        // Only clear if still showing the "done" state (not replaced by new progress)
+        if aiProcessing[conversationId]?.phase == "done" {
+          aiProcessing.removeValue(forKey: conversationId)
+        }
+      }
+    } else {
+      aiProcessing.removeValue(forKey: payload.conversationId)
+    }
   }
 }
 
@@ -78,6 +141,8 @@ public final class ConnectionStore {
 public struct TypingIndicator: Sendable {
   public let userId: String?
   public let aiAgentId: String?
+  public let name: String?
+  public let image: String?
   public let preview: String?
 }
 
@@ -85,4 +150,13 @@ public struct AIProcessingState: Sendable {
   public let aiAgentId: String
   public let phase: String
   public let message: String?
+}
+
+public struct SeenReceipt: Sendable, Identifiable {
+  public var id: String { actorId }
+  public let actorType: String
+  public let actorId: String
+  public let name: String?
+  public let image: String?
+  public let lastSeenAt: String
 }
