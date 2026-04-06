@@ -1,0 +1,240 @@
+import Foundation
+
+// MARK: - Timeline Item
+
+public struct TimelineItem: Codable, Sendable, Identifiable {
+  public let id: String?
+  public let conversationId: String
+  public let organizationId: String
+  public let visibility: TimelineItemVisibility
+  public let type: TimelineItemType
+  public let text: String?
+  public let tool: String?
+  public let parts: [TimelineItemPart]
+  public let userId: String?
+  public let aiAgentId: String?
+  public let visitorId: String?
+  public let createdAt: String
+  public let deletedAt: String?
+}
+
+public enum TimelineItemVisibility: String, Codable, Sendable {
+  case `public`
+  case `private`
+}
+
+public enum TimelineItemType: String, Codable, Sendable {
+  case message
+  case event
+  case identification
+  case tool
+}
+
+// MARK: - Timeline Item Parts
+
+public enum TimelineItemPart: Codable, Sendable {
+  case text(TextPart)
+  case reasoning(ReasoningPart)
+  case tool(ToolPart)
+  case sourceUrl(SourceUrlPart)
+  case sourceDocument(SourceDocumentPart)
+  case stepStart
+  case file(FilePart)
+  case image(ImagePart)
+  case event(EventPart)
+  case metadata(MetadataPart)
+  case unknown
+
+  private enum TypeKey: String, Codable {
+    case text, reasoning, event, metadata, file, image
+    case sourceUrl = "source-url"
+    case sourceDocument = "source-document"
+    case stepStart = "step-start"
+  }
+
+  private struct PartTypeContainer: Codable {
+    let type: String
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let typeContainer = try container.decode(PartTypeContainer.self)
+
+    switch typeContainer.type {
+    case "text":
+      self = .text(try container.decode(TextPart.self))
+    case "reasoning":
+      self = .reasoning(try container.decode(ReasoningPart.self))
+    case "source-url":
+      self = .sourceUrl(try container.decode(SourceUrlPart.self))
+    case "source-document":
+      self = .sourceDocument(try container.decode(SourceDocumentPart.self))
+    case "step-start":
+      self = .stepStart
+    case "file":
+      self = .file(try container.decode(FilePart.self))
+    case "image":
+      self = .image(try container.decode(ImagePart.self))
+    case "event":
+      self = .event(try container.decode(EventPart.self))
+    case "metadata":
+      self = .metadata(try container.decode(MetadataPart.self))
+    default:
+      if typeContainer.type.hasPrefix("tool-") {
+        self = .tool(try container.decode(ToolPart.self))
+      } else {
+        self = .unknown
+      }
+    }
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case .text(let part): try container.encode(part)
+    case .reasoning(let part): try container.encode(part)
+    case .tool(let part): try container.encode(part)
+    case .sourceUrl(let part): try container.encode(part)
+    case .sourceDocument(let part): try container.encode(part)
+    case .stepStart: try container.encode(["type": "step-start"])
+    case .file(let part): try container.encode(part)
+    case .image(let part): try container.encode(part)
+    case .event(let part): try container.encode(part)
+    case .metadata(let part): try container.encode(part)
+    case .unknown: try container.encode(["type": "unknown"])
+    }
+  }
+}
+
+// MARK: - Part Types
+
+public struct TextPart: Codable, Sendable {
+  public let type: String
+  public let text: String
+  public let state: String?
+
+  public init(text: String, state: String? = nil) {
+    self.type = "text"
+    self.text = text
+    self.state = state
+  }
+}
+
+public struct ReasoningPart: Codable, Sendable {
+  public let type: String
+  public let text: String
+  public let state: String?
+}
+
+public struct ToolPart: Codable, Sendable {
+  public let type: String
+  public let toolCallId: String
+  public let toolName: String
+  public let state: String
+  public let errorText: String?
+}
+
+public struct SourceUrlPart: Codable, Sendable {
+  public let type: String
+  public let sourceId: String
+  public let url: String
+  public let title: String?
+}
+
+public struct SourceDocumentPart: Codable, Sendable {
+  public let type: String
+  public let sourceId: String
+  public let mediaType: String
+  public let title: String
+  public let filename: String?
+}
+
+public struct FilePart: Codable, Sendable {
+  public let type: String
+  public let url: String
+  public let mediaType: String
+  public let filename: String?
+  public let size: Int?
+}
+
+public struct ImagePart: Codable, Sendable {
+  public let type: String
+  public let url: String
+  public let mediaType: String
+  public let filename: String?
+  public let size: Int?
+  public let width: Int?
+  public let height: Int?
+}
+
+public struct EventPart: Codable, Sendable {
+  public let type: String
+  public let eventType: String
+  public let actorUserId: String?
+  public let actorAiAgentId: String?
+  public let targetUserId: String?
+  public let targetAiAgentId: String?
+  public let message: String?
+}
+
+public struct MetadataPart: Codable, Sendable {
+  public let type: String
+  public let source: String
+}
+
+// MARK: - Timeline Responses
+
+public struct TimelineResponse: Codable, Sendable {
+  public let items: [TimelineItem]
+  public let nextCursor: String?
+  public let hasNextPage: Bool
+}
+
+public struct SendMessageRequest: Codable, Sendable {
+  public let conversationId: String
+  public let item: SendMessageItem
+
+  public init(conversationId: String, text: String, visitorId: String? = nil) {
+    self.conversationId = conversationId
+    self.item = SendMessageItem(
+      type: .message,
+      text: text,
+      parts: [.text(TextPart(text: text))],
+      visitorId: visitorId
+    )
+  }
+}
+
+public struct SendMessageItem: Codable, Sendable {
+  public let type: TimelineItemType
+  public let text: String
+  public let parts: [TimelineItemPart]?
+  public let visibility: TimelineItemVisibility
+  public let visitorId: String?
+
+  public init(
+    type: TimelineItemType = .message,
+    text: String,
+    parts: [TimelineItemPart]? = nil,
+    visibility: TimelineItemVisibility = .public,
+    visitorId: String? = nil
+  ) {
+    self.type = type
+    self.text = text
+    self.parts = parts
+    self.visibility = visibility
+    self.visitorId = visitorId
+  }
+}
+
+public struct SendMessageResponse: Codable, Sendable {
+  public let item: TimelineItem
+}
+
+// MARK: - Delivery Status (for optimistic updates)
+
+public enum MessageDeliveryStatus: Sendable {
+  case pending(localId: String)
+  case sent(serverId: String)
+  case failed(Error)
+}
