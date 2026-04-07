@@ -155,6 +155,14 @@ public struct FilePart: Codable, Sendable {
   public let mediaType: String
   public let filename: String?
   public let size: Int?
+
+  public init(url: String, mediaType: String, filename: String?, size: Int?) {
+    self.type = "file"
+    self.url = url
+    self.mediaType = mediaType
+    self.filename = filename
+    self.size = size
+  }
 }
 
 public struct ImagePart: Codable, Sendable {
@@ -165,6 +173,17 @@ public struct ImagePart: Codable, Sendable {
   public let size: Int?
   public let width: Int?
   public let height: Int?
+
+  public init(url: String, mediaType: String, filename: String?, size: Int?,
+              width: Int? = nil, height: Int? = nil) {
+    self.type = "image"
+    self.url = url
+    self.mediaType = mediaType
+    self.filename = filename
+    self.size = size
+    self.width = width
+    self.height = height
+  }
 }
 
 public struct EventPart: Codable, Sendable {
@@ -203,6 +222,16 @@ public struct SendMessageRequest: Codable, Sendable {
       visitorId: visitorId
     )
   }
+
+  public init(conversationId: String, text: String, parts: [TimelineItemPart], visitorId: String?) {
+    self.conversationId = conversationId
+    self.item = SendMessageItem(
+      type: .message,
+      text: text,
+      parts: parts,
+      visitorId: visitorId
+    )
+  }
 }
 
 public struct SendMessageItem: Codable, Sendable {
@@ -238,6 +267,7 @@ public struct PendingMessage: Sendable, Identifiable {
   public let id: String
   public let conversationId: String
   public let text: String
+  public let attachments: [FileAttachment]
   public let createdAt: Date
   public var status: DeliveryStatus
 
@@ -270,20 +300,39 @@ public struct PendingMessage: Sendable, Identifiable {
 // MARK: - File Upload
 
 public struct GenerateUploadURLRequest: Codable, Sendable {
-  public let fileName: String
   public let contentType: String
-  public let conversationId: String
+  public let websiteId: String
+  public let scope: UploadScope
+  public let fileName: String?
 
-  public init(fileName: String, contentType: String, conversationId: String) {
-    self.fileName = fileName
+  public init(contentType: String, websiteId: String, organizationId: String,
+              conversationId: String, fileName: String? = nil) {
     self.contentType = contentType
-    self.conversationId = conversationId
+    self.websiteId = websiteId
+    self.scope = UploadScope(
+      type: "conversation",
+      organizationId: organizationId,
+      websiteId: websiteId,
+      conversationId: conversationId
+    )
+    self.fileName = fileName
   }
 }
 
+public struct UploadScope: Codable, Sendable {
+  public let type: String
+  public let organizationId: String
+  public let websiteId: String
+  public let conversationId: String
+}
+
 public struct GenerateUploadURLResponse: Codable, Sendable {
-  public let url: String
-  public let fileUrl: String
+  public let uploadUrl: String
+  public let publicUrl: String
+  public let key: String
+  public let bucket: String
+  public let expiresAt: String
+  public let contentType: String
 }
 
 // MARK: - Activity Tracking

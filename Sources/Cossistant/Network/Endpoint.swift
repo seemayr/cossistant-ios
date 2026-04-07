@@ -54,7 +54,7 @@ enum Endpoint {
     case .updateVisitorMetadata(let visitorId):
       return "/visitors/\(visitorId)/metadata"
     case .generateUploadURL:
-      return "/upload/generate-url"
+      return "/uploads/sign-url"
     case .visitorActivity:
       return "/visitors/activity"
     }

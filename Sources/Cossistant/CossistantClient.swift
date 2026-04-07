@@ -152,17 +152,21 @@ public final class CossistantClient {
     contentType: String,
     conversationId: String
   ) async throws -> String {
+    guard let website else { throw CossistantError.notBootstrapped }
+
     let request = GenerateUploadURLRequest(
-      fileName: fileName,
       contentType: contentType,
-      conversationId: conversationId
+      websiteId: website.id,
+      organizationId: website.organizationId,
+      conversationId: conversationId,
+      fileName: fileName
     )
     let response: GenerateUploadURLResponse = try await rest.request(
       .generateUploadURL, body: request
     )
 
     // PUT to S3
-    guard let uploadURL = URL(string: response.url) else {
+    guard let uploadURL = URL(string: response.uploadUrl) else {
       throw CossistantError.networkError(underlying: URLError(.badURL))
     }
     var s3Request = URLRequest(url: uploadURL)
@@ -179,7 +183,59 @@ public final class CossistantClient {
       )
     }
 
-    return response.fileUrl
+    return response.publicUrl
+  }
+
+  // MARK: - Send Message with Attachments
+
+  /// Sends a message with text and/or file attachments.
+  /// Uploads all files in parallel, builds parts array, sends as a single message.
+  public func sendMessageWithAttachments(
+    text: String,
+    attachments: [FileAttachment],
+    visitorId: String?
+  ) async throws {
+    guard let conversationId = timeline.activeConversationId else {
+      throw CossistantError.notBootstrapped
+    }
+
+    // Upload all files in parallel
+    let uploadedParts: [TimelineItemPart] = try await withThrowingTaskGroup(
+      of: TimelineItemPart.self
+    ) { group in
+      for attachment in attachments {
+        group.addTask {
+          let url = try await self.uploadFile(
+            data: attachment.data,
+            fileName: attachment.fileName,
+            contentType: attachment.contentType,
+            conversationId: conversationId
+          )
+          if attachment.isImage {
+            return .image(ImagePart(
+              url: url, mediaType: attachment.contentType,
+              filename: attachment.fileName, size: attachment.fileSizeBytes
+            ))
+          } else {
+            return .file(FilePart(
+              url: url, mediaType: attachment.contentType,
+              filename: attachment.fileName, size: attachment.fileSizeBytes
+            ))
+          }
+        }
+      }
+      var parts: [TimelineItemPart] = []
+      for try await part in group { parts.append(part) }
+      return parts
+    }
+
+    // Build parts: always include a text part (API requires text field)
+    var allParts: [TimelineItemPart] = [.text(TextPart(text: text))]
+    allParts.append(contentsOf: uploadedParts)
+
+    try await timeline.sendMessageWithParts(
+      text: text, parts: allParts, attachments: attachments, visitorId: visitorId
+    )
   }
 
   // MARK: - Activity Tracking

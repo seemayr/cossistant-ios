@@ -114,25 +114,8 @@ public final class ConnectionStore {
   }
 
   func handleAICompleted(_ payload: AIProcessingCompletedPayload) {
-    if payload.status == "success" {
-      // Show "Reply sent" briefly before clearing, matching web widget behavior
-      aiProcessing[payload.conversationId] = AIProcessingState(
-        aiAgentId: payload.aiAgentId,
-        phase: "done",
-        message: nil
-      )
-      // Auto-clear after a short delay
-      let conversationId = payload.conversationId
-      Task { @MainActor in
-        try? await Task.sleep(for: .seconds(2.5))
-        // Only clear if still showing the "done" state (not replaced by new progress)
-        if aiProcessing[conversationId]?.phase == "done" {
-          aiProcessing.removeValue(forKey: conversationId)
-        }
-      }
-    } else {
-      aiProcessing.removeValue(forKey: payload.conversationId)
-    }
+    guard payload.audience == "all" || payload.audience == nil else { return }
+    aiProcessing.removeValue(forKey: payload.conversationId)
   }
 }
 

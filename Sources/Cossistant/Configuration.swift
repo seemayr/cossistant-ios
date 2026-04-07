@@ -16,15 +16,21 @@ public struct Configuration: Sendable {
   /// Base URL for WebSocket connections.
   public let webSocketBaseURL: URL
 
+  /// Optional support email address. When set, a "Direct Contact" button appears
+  /// in error views so users can reach support even when the API is unreachable.
+  public let supportEmail: String?
+
   public init(
     apiKey: String,
     origin: String,
     apiBaseURL: URL = URL(string: "https://api.cossistant.com/v1")!,
-    webSocketBaseURL: URL = URL(string: "wss://api.cossistant.com/ws")!
+    webSocketBaseURL: URL = URL(string: "wss://api.cossistant.com/ws")!,
+    supportEmail: String? = nil
   ) {
     self.apiKey = apiKey
     self.origin = origin
     self.apiBaseURL = apiBaseURL
     self.webSocketBaseURL = webSocketBaseURL
+    self.supportEmail = supportEmail
   }
 }

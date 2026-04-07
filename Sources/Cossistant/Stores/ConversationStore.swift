@@ -18,8 +18,13 @@ public final class ConversationStore {
     return open + resolved
   }
 
+  /// Whether any conversation passes the display filter.
+  public var hasDisplayableConversations: Bool {
+    conversations.contains(where: shouldDisplay)
+  }
+
   /// Matches web widget: hide deleted + hide conversations with no title and no last message.
-  private func shouldDisplay(_ conversation: Conversation) -> Bool {
+  func shouldDisplay(_ conversation: Conversation) -> Bool {
     if conversation.deletedAt != nil { return false }
     let hasTitle = !(conversation.title?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
     let hasLastMessage = !(conversation.lastTimelineItem?.text?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
@@ -32,6 +37,7 @@ public final class ConversationStore {
 
   private var currentPage = 1
   private let pageSize = 20
+  private let maxAutoFetchPages = 10
   private let rest: RESTClient
 
   init(rest: RESTClient) {
@@ -49,23 +55,50 @@ public final class ConversationStore {
     let response: ListConversationsResponse = try await rest.request(
       .listConversations(page: currentPage, limit: pageSize)
     )
+    let displayableCountBefore = conversations.filter(shouldDisplay).count
     conversations = response.conversations
     hasMore = response.pagination.hasMore
+
+    try await autoFetchIfNeeded(displayableCountBefore: displayableCountBefore)
   }
 
   /// Loads the next page and appends to the list.
   public func loadMore() async throws {
     guard hasMore, !isLoading else { return }
 
-    currentPage += 1
     isLoading = true
     defer { isLoading = false }
 
+    let displayableCountBefore = conversations.filter(shouldDisplay).count
+    _ = try await fetchNextPage()
+    try await autoFetchIfNeeded(displayableCountBefore: displayableCountBefore)
+  }
+
+  // MARK: - Pagination Helpers
+
+  /// Fetches a single next page and appends results.
+  @discardableResult
+  private func fetchNextPage() async throws -> ListConversationsResponse {
+    currentPage += 1
     let response: ListConversationsResponse = try await rest.request(
       .listConversations(page: currentPage, limit: pageSize)
     )
     conversations.append(contentsOf: response.conversations)
     hasMore = response.pagination.hasMore
+    return response
+  }
+
+  /// Keeps fetching pages while `hasMore` is true but no new displayable
+  /// conversations have appeared. Stops when new content is found,
+  /// `hasMore` becomes false, or the safety limit is reached.
+  private func autoFetchIfNeeded(displayableCountBefore: Int) async throws {
+    var extraPages = 0
+    while hasMore, extraPages < maxAutoFetchPages {
+      let currentCount = conversations.filter(shouldDisplay).count
+      if currentCount > displayableCountBefore { break }
+      _ = try await fetchNextPage()
+      extraPages += 1
+    }
   }
 
   /// Creates a new conversation.
