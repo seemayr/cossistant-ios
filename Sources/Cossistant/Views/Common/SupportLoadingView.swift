@@ -15,6 +15,7 @@ struct SupportLoadingView: View {
       dotsIndicator
       Text(message)
         .font(.subheadline)
+        .fontWeight(.regular)
         .foregroundStyle(.secondary)
     }
     .task(id: reduceMotion) {

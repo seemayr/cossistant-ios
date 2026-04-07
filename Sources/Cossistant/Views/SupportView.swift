@@ -3,12 +3,21 @@ import SFSafeSymbols
 
 /// Main support view — bootstraps the client and provides conversation list + chat.
 ///
-/// From settings (conversation list):
+/// `SupportView` does **not** include its own `NavigationStack`.
+/// It uses `.navigationTitle` and `.toolbar` modifiers that compose with
+/// whatever navigation container the host provides.
+///
+/// **Pushed into an existing NavigationStack:**
 /// ```swift
 /// SupportView(client: client)
 /// ```
 ///
-/// From game loading (auto-create with context):
+/// **In a sheet / fullscreen cover (use the NavigationStack wrapper):**
+/// ```swift
+/// SupportNavigationView(client: client, onDismiss: { dismiss() })
+/// ```
+///
+/// **Auto-create with context:**
 /// ```swift
 /// SupportView(
 ///   client: client,
@@ -25,6 +34,7 @@ import SFSafeSymbols
 public struct SupportView: View {
   private let client: CossistantClient
   private let autoCreate: SupportContext?
+  private let onDismiss: (() -> Void)?
 
   @State private var isBootstrapped = false
   @State private var bootError: String?
@@ -36,51 +46,69 @@ public struct SupportView: View {
   ///   - client: The initialized CossistantClient.
   ///   - autoCreate: When provided, automatically creates a new conversation on first open
   ///                 with the given context metadata and optional initial message.
+  ///   - onDismiss: When provided, a close button is shown in the toolbar.
+  ///                The host is responsible for actually dismissing the view.
   public init(
     client: CossistantClient,
-    autoCreate: SupportContext? = nil
+    autoCreate: SupportContext? = nil,
+    onDismiss: (() -> Void)? = nil
   ) {
     self.client = client
     self.autoCreate = autoCreate
+    self.onDismiss = onDismiss
   }
 
   public var body: some View {
-    NavigationStack {
-      Group {
-        if let bootError {
-          errorView(bootError)
-        } else if !isBootstrapped {
-          SupportLoadingOverlayView(R.string(.connecting))
-        } else if isCreatingNew {
-          ChatView(
-            timeline: client.timeline,
-            connection: client.connection,
-            conversations: client.conversations,
-            agents: client.agents,
-            visitorId: client.visitorId,
-            conversationId: nil,
-            context: activeContext,
-            onBack: navigateBack
-          )
-        } else if let conversation = selectedConversation {
-          ChatView(
-            timeline: client.timeline,
-            connection: client.connection,
-            conversations: client.conversations,
-            agents: client.agents,
-            visitorId: client.visitorId,
-            conversationId: conversation.id,
-            context: nil,
-            onBack: navigateBack
-          )
-        } else {
-          conversationList
+    Group {
+      if let bootError {
+        errorView(bootError)
+      } else if !isBootstrapped {
+        CossLoadingOverlayView(R.string(.connecting))
+      } else if isCreatingNew {
+        ChatView(
+          client: client,
+          timeline: client.timeline,
+          connection: client.connection,
+          conversations: client.conversations,
+          agents: client.agents,
+          visitorId: client.visitorId,
+          conversationId: nil,
+          context: activeContext,
+          onBack: navigateBack
+        )
+      } else if let conversation = selectedConversation {
+        ChatView(
+          client: client,
+          timeline: client.timeline,
+          connection: client.connection,
+          conversations: client.conversations,
+          agents: client.agents,
+          visitorId: client.visitorId,
+          conversationId: conversation.id,
+          context: nil,
+          onBack: navigateBack
+        )
+      } else {
+        conversationList
+      }
+    }
+    .background(.background)
+    .toolbar {
+      if let onDismiss {
+        ToolbarItem(placement: .confirmationAction) {
+          Button(action: onDismiss) {
+            Label(R.string(.close), systemSymbol: .xmark)
+              .labelStyle(.iconOnly)
+          }
+          .buttonStyle(HapticButtonStyle(haptic: .buttonTap))
         }
       }
     }
-    .navigationBarBackButtonHidden()
     .task {
       await bootstrap()
+    }
+    .onDisappear {
+      Task { await client.disconnect() }
     }
   }
 
@@ -145,11 +173,22 @@ public struct SupportView: View {
     } description: {
       Text(message)
     } actions: {
-      Button(R.string(.retry)) {
+      Button(action: {
         bootError = nil
         Task { await bootstrap() }
-      }
+      }, label: {
+        Label(R.string(.retry), systemSymbol: .arrowClockwise)
+          .font(.body)
+          .fontWeight(.medium)
+      })
       .buttonStyle(HapticButtonStyle(haptic: .retry))
+      
+
+      if let email = client.configuration.supportEmail {
+        DirectContactButton(email: email)
+          .font(.body)
+          .fontWeight(.medium)
+      }
     }
     .transition(.fadeInScale)
   }
@@ -157,40 +196,70 @@ public struct SupportView: View {
 
 // MARK: - Live Preview
 
-#Preview("Support (Live API)") {
-  SupportView(
+private let previewAPIKey = ProcessInfo.processInfo.environment["COSSISTANT_API_KEY"] ?? "pk_test_YOUR_KEY_HERE"
+private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIGIN"] ?? "http://localhost:3000"
+
+#Preview("Support (Standalone)") {
+  SupportNavigationView(
     client: CossistantClient(
       configuration: Configuration(
-        apiKey: "pk_test_584b4b6d7220ee2e1b83cbfb965bc9507347feccf2a604a3504d27d0930115db",
-        origin: "http://localhost:3000"
+        apiKey: previewAPIKey,
+        origin: previewOrigin,
+        supportEmail: "support@sample.com"
       )
     )
   )
 }
 
-#Preview("Support Embedded") {
-  VStack {
+#Preview("Support (In NavigationStack)") {
+  NavigationStack {
     SupportView(
       client: CossistantClient(
         configuration: Configuration(
-          apiKey: "pk_test_584b4b6d7220ee2e1b83cbfb965bc9507347feccf2a604a3504d27d0930115db",
-          origin: "http://localhost:3000"
+          apiKey: previewAPIKey,
+          origin: previewOrigin
         )
       )
     )
-    .clipShape(.rect(cornerRadius: 32))
-    .padding(16)
   }
-  .background(Color.purple)
-  
+}
+
+#Preview("Support (Embedded)") {
+  VStack {
+    SupportNavigationView(
+      client: CossistantClient(
+        configuration: Configuration(
+          apiKey: previewAPIKey,
+          origin: previewOrigin,
+          supportEmail: "support@sample.com"
+        )
+      )
+    )
+    .clipShape(.rect(cornerRadius: 16))
+  }
+  .padding(32)
+  .background(.purple)
+}
+
+#Preview("Support (Sheet with Dismiss)") {
+  SupportNavigationView(
+    client: CossistantClient(
+      configuration: Configuration(
+        apiKey: previewAPIKey,
+        origin: previewOrigin,
+        supportEmail: "support@sample.com"
+      )
+    ),
+    onDismiss: {}
+  )
 }
 
 #Preview("Support (Auto-Create)") {
-  SupportView(
+  SupportNavigationView(
     client: CossistantClient(
       configuration: Configuration(
-        apiKey: "pk_test_584b4b6d7220ee2e1b83cbfb965bc9507347feccf2a604a3504d27d0930115db",
-        origin: "http://localhost:3000"
+        apiKey: previewAPIKey,
+        origin: previewOrigin
       )
     ),
     autoCreate: SupportContext(

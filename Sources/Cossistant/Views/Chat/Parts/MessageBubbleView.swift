@@ -7,7 +7,7 @@ struct MessageBubbleView: View {
   let isFromVisitor: Bool
   let senderInfo: AgentInfo?
   let isGrouped: Bool
-
+  
   init(
     item: TimelineItem,
     visitorId: String?,
@@ -19,7 +19,7 @@ struct MessageBubbleView: View {
     self.senderInfo = agents.sender(for: item)
     self.isGrouped = isGrouped
   }
-
+  
   var body: some View {
     if item.type == .event {
       EventBubbleView(item: item, senderInfo: senderInfo)
@@ -38,13 +38,13 @@ struct MessageBubbleView: View {
 private struct VisitorBubbleView: View {
   let item: TimelineItem
   let isGrouped: Bool
-
+  
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
       Spacer(minLength: 40)
-
-      VStack(alignment: .trailing, spacing: 4) {
-        VStack(alignment: .trailing, spacing: -6) {
+      
+      VStack(alignment: .trailing, spacing: -6) {
+        VStack(alignment: .trailing, spacing: 4) {
           if let text = item.text, !text.isEmpty {
             Text(text)
               .font(.body)
@@ -56,25 +56,29 @@ private struct VisitorBubbleView: View {
               .zIndex(1)
           }
           
-          if !isGrouped {
-            Text(Self.formattedTime(item.createdAt))
-              .font(.caption2)
-              .fontWeight(.semibold)
-              .foregroundStyle(.black)
-              .padding(.horizontal, 4)
-              .padding(.vertical, 2)
-              .background(Color.white.opacity(0.75))
-              .clipShape(.rect(cornerRadius: 6))
-              .padding(.horizontal, 4)
-              .zIndex(2)
+          if !item.parts.isEmpty {
+            RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: true)
+              .zIndex(1)
           }
         }
         
-        RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: true)
+        if !isGrouped {
+          Text(Self.formattedTime(item.createdAt))
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .foregroundStyle(.primary)
+            .background(.background.tertiary)
+            .clipShape(.rect(cornerRadius: 6))
+            .opacity(0.7)
+            .padding(.horizontal, 4)
+            .zIndex(2)
+        }
       }
     }
   }
-
+  
   static func formattedTime(_ createdAt: String) -> String {
     guard let date = SupportFormatters.parseISO8601( createdAt) else { return "" }
     return SupportFormatters.timeOnly.string(from: date)
@@ -87,7 +91,7 @@ private struct AgentBubbleView: View {
   let item: TimelineItem
   let senderInfo: AgentInfo?
   let isGrouped: Bool
-
+  
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
       if isGrouped {
@@ -96,16 +100,16 @@ private struct AgentBubbleView: View {
       } else {
         AgentAvatarView(info: senderInfo, size: 28)
       }
-
-      VStack(alignment: .leading, spacing: 4) {
-        if !isGrouped, let name = senderInfo?.name {
-          Text(name)
-            .font(.caption)
-            .fontWeight(.medium)
-            .foregroundStyle(.secondary)
-        }
-
-        VStack(alignment: .leading, spacing: -6) {
+      
+      VStack(alignment: .leading, spacing: -6) {
+        VStack(alignment: .leading, spacing: 4) {
+          if !isGrouped, let name = senderInfo?.name {
+            Text(name)
+              .font(.caption)
+              .fontWeight(.medium)
+              .foregroundStyle(.secondary)
+          }
+          
           if let text = item.text, !text.isEmpty {
             Text(text)
               .font(.body)
@@ -117,23 +121,27 @@ private struct AgentBubbleView: View {
               .zIndex(1)
           }
           
-          if !isGrouped {
-            Text(VisitorBubbleView.formattedTime(item.createdAt))
-              .font(.caption2)
-              .fontWeight(.semibold)
-              .foregroundStyle(.black)
-              .padding(.horizontal, 4)
-              .padding(.vertical, 2)
-              .background(Color.white.opacity(0.75))
-              .clipShape(.rect(cornerRadius: 6))
-              .padding(.horizontal, 4)
-              .zIndex(2)
+          if !item.parts.isEmpty {
+            RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: false)
           }
         }
-
-        RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: false)
+        
+        if !isGrouped {
+          Text(VisitorBubbleView.formattedTime(item.createdAt))
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundStyle(.black)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .foregroundStyle(.primary)
+            .background(.background.tertiary)
+            .clipShape(.rect(cornerRadius: 6))
+            .opacity(0.7)
+            .padding(.horizontal, 4)
+            .zIndex(2)
+        }
       }
-
+      
       Spacer(minLength: 40)
     }
   }
@@ -145,13 +153,13 @@ private struct RichPartsView: View {
   let parts: [TimelineItemPart]
   let itemText: String?
   let isFromVisitor: Bool
-
+  
   var body: some View {
     ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
       switch part {
       case .text(let textPart):
         // Only render from part when item.text is missing (e.g. streaming)
-        if itemText == nil || itemText?.isEmpty == true {
+        if (itemText == nil || itemText?.isEmpty == true) && !textPart.text.isEmpty {
           Text(textPart.text)
             .font(.body)
             .foregroundStyle(isFromVisitor ? .white : .primary)
@@ -184,7 +192,7 @@ private struct RichPartsView: View {
 private struct EventBubbleView: View {
   let item: TimelineItem
   let senderInfo: AgentInfo?
-
+  
   var body: some View {
     HStack {
       Spacer()
@@ -210,14 +218,14 @@ private struct EventBubbleView: View {
     .padding(.vertical, 12)
     .transition(.fadeInScale)
   }
-
+  
   @ViewBuilder
   private var eventIcon: some View {
     let eventType = item.parts.compactMap { part -> String? in
       if case .event(let e) = part { return e.eventType }
       return nil
     }.first ?? ""
-
+    
     switch eventType {
     case "resolved":
       Image(systemSymbol: .checkmarkCircleFill)
@@ -235,7 +243,7 @@ private struct EventBubbleView: View {
       Image(systemSymbol: .infoCircleFill)
     }
   }
-
+  
   private var label: Text {
     let name = senderInfo?.name ?? R.string(.event_default_actor)
     for part in item.parts {
@@ -259,19 +267,17 @@ private struct EventBubbleView: View {
 
 private struct ToolActivityBubbleView: View {
   let item: TimelineItem
-
+  
   var body: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 4) {
       indicator
       Text(toolLabel)
         .font(.caption)
         .foregroundStyle(.secondary)
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 0)
     .frame(maxWidth: .infinity, alignment: .leading)
   }
-
+  
   @ViewBuilder
   private var indicator: some View {
     let state = toolState
@@ -288,14 +294,14 @@ private struct ToolActivityBubbleView: View {
         .foregroundStyle(.green)
     }
   }
-
+  
   private var toolState: String {
     for part in item.parts {
       if case .tool(let t) = part { return t.state }
     }
     return "result"
   }
-
+  
   private var toolLabel: String {
     if let text = item.text?.trimmingCharacters(in: .whitespaces), !text.isEmpty {
       return text
@@ -317,23 +323,60 @@ private struct ToolActivityBubbleView: View {
 struct AgentAvatarView: View {
   let info: AgentInfo?
   let size: CGFloat
-
+  
+  private var isAI: Bool { info?.kind == .ai }
+  
   var body: some View {
-    if let imageURL = info?.image, let url = URL(string: imageURL) {
+    if isAI {
+      aiAvatar
+    } else if let imageURL = info?.image, let url = URL(string: imageURL) {
       AsyncImage(url: url) { image in
         image.resizable()
       } placeholder: {
         initialsView
       }
       .frame(width: size, height: size)
-      .clipShape(.circle)
+      .clipShape(.rect(cornerRadius: size * 0.3))
     } else {
       initialsView
     }
   }
-
+  
+  // MARK: AI Avatar
+  
+  @ViewBuilder
+  private var aiAvatar: some View {
+    if let imageURL = info?.image, let url = URL(string: imageURL) {
+      AsyncImage(url: url) { image in
+        image.resizable()
+      } placeholder: {
+        aiLogoView
+      }
+      .frame(width: size, height: size)
+      .clipShape(.rect(cornerRadius: size * 0.3))
+    } else {
+      aiLogoView
+    }
+  }
+  
+  private var aiLogoView: some View {
+    RoundedRectangle(cornerRadius: size * 0.3)
+      .fill(.secondary.opacity(0.12))
+      .frame(width: size, height: size)
+      .overlay {
+        Image("coss", bundle: .module)
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: size * 0.5, height: size * 0.5)
+          .foregroundStyle(.secondary)
+      }
+  }
+  
+  // MARK: Human Avatar
+  
   private var initialsView: some View {
-    Circle()
+    RoundedRectangle(cornerRadius: size * 0.3)
       .fill(.tint.opacity(0.2))
       .frame(width: size, height: size)
       .overlay {

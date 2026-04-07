@@ -41,28 +41,45 @@ public struct ConversationListView: View {
         }
         .buttonStyle(HapticButtonStyle())
         .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+        .transition(.listRow)
       }
 
       if conversations.hasMore {
-        Button(R.string(.load_more)) {
+        Button(action: {
           Task { try? await conversations.loadMore() }
-        }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
+        }, label: {
+          HStack(spacing: 4) {
+            Image(systemSymbol: .ellipsisRectangle)
+            Text(R.string(.load_more))
+          }
+          .font(.subheadline)
+          .fontWeight(.medium)
+          .foregroundStyle(Color.white)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 5)
+          .background(Color.black.opacity(0.3))
+          .clipShape(.rect(cornerRadius: 8))
+        })
         .buttonStyle(HapticButtonStyle())
+        .frame(maxWidth: .infinity, alignment: .center)
+        .listRowSeparator(.hidden)
+        .transition(.fadeInScale)
       }
     }
     .listStyle(.plain)
-    .safeAreaInset(edge: .bottom) {
-      newConversationCTA
-    }
+    .cossistantAnimation(CossistantAnimation.smooth, value: conversations.sorted.map(\.id))
+    .cossistantAnimation(CossistantAnimation.smooth, value: conversations.hasMore)
     .overlay {
       if conversations.isLoading && conversations.conversations.isEmpty {
         SupportLoadingOverlayView(R.string(.loading_conversations))
-      } else if conversations.conversations.isEmpty {
-        emptyState
+      } else if !conversations.hasDisplayableConversations {
+        ConversationListEmptyView()
+          .padding(.bottom, 48)
+          .transition(.fadeInScale)
       }
+    }
+    .safeAreaInset(edge: .bottom) {
+      newConversationCTA
     }
   }
 
@@ -79,13 +96,8 @@ public struct ConversationListView: View {
     }
     .buttonStyle(HapticButtonStyle())
     .padding(.horizontal, 16)
-    .padding(.vertical, 12)
+    .padding(.vertical, 16)
     .background(.regularMaterial)
-  }
-
-  private var emptyState: some View {
-    ConversationListEmptyView()
-      .transition(.fadeInScale)
   }
 }
 
@@ -99,16 +111,11 @@ private struct ConversationListEmptyView: View {
   var body: some View {
     VStack(spacing: 28) {
       VStack(spacing: 10) {
-        ghostCard(lineWidth: 110, delay: 0)
-        ghostCard(lineWidth: 80, delay: 0.08)
-        ghostCard(lineWidth: 100, delay: 0.16)
+        ghostCard(lineWidth: 110, entranceDelay: 0, drift: 9, floatDuration: 2.8)
+        ghostCard(lineWidth: 80, entranceDelay: 0.08, drift: -11, floatDuration: 3.2)
+        ghostCard(lineWidth: 100, entranceDelay: 0.16, drift: 6, floatDuration: 2.5)
       }
-      .padding(.horizontal, 32)
-      .offset(y: floating ? -3 : 3)
-      .animation(
-        reduceMotion ? nil : .easeInOut(duration: 2.5).repeatForever(autoreverses: true),
-        value: floating
-      )
+      .padding(.horizontal, 54)
 
       VStack(spacing: 6) {
         Text(R.string(.empty_conversations_title))
@@ -134,10 +141,10 @@ private struct ConversationListEmptyView: View {
     }
   }
 
-  private func ghostCard(lineWidth: CGFloat, delay: Double) -> some View {
+  private func ghostCard(lineWidth: CGFloat, entranceDelay: Double, drift: CGFloat, floatDuration: Double) -> some View {
     HStack(spacing: 12) {
       Circle()
-        .fill(.secondary.opacity(0.15))
+        .fill(.secondary.opacity(0.2))
         .frame(width: 36, height: 36)
 
       VStack(alignment: .leading, spacing: 6) {
@@ -153,12 +160,19 @@ private struct ConversationListEmptyView: View {
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 12)
-    .background(.secondary.opacity(0.06), in: .rect(cornerRadius: 14))
+    .background(.secondary.opacity(0.1), in: .rect(cornerRadius: 14))
     .opacity(appeared ? 1 : 0)
+    .offset(x: floating ? drift : 0)
     .offset(y: appeared ? 0 : 12)
     .animation(
-      reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7).delay(delay),
+      reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.7).delay(entranceDelay),
       value: appeared
+    )
+    .animation(
+      reduceMotion ? nil : .easeInOut(duration: floatDuration)
+        .repeatForever(autoreverses: true)
+        .delay(entranceDelay),
+      value: floating
     )
   }
 }
@@ -236,6 +250,7 @@ private struct ConversationRowView: View {
         : (agents.sender(for: lastItem)?.name ?? R.string(.sender_default))
       Text("\(senderName): \(lastItem.text ?? "")")
         .font(.subheadline)
+        .fontWeight(.regular)
         .foregroundStyle(.secondary)
         .lineLimit(3)
     }

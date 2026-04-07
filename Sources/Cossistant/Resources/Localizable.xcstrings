@@ -1,6 +1,132 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "attachment_choose_file" : {
+      "comment" : "Menu option to choose a document file to attach.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei auswählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose File"
+          }
+        }
+      }
+    },
+    "attachment_error_too_large" : {
+      "comment" : "Error shown when an attached file exceeds the size limit. %1$@ = file name, %2$@ = max MB.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ überschreitet das %2$@ MB Limit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ exceeds the %2$@ MB limit"
+          }
+        }
+      }
+    },
+    "attachment_error_too_many" : {
+      "comment" : "Error shown when user tries to attach more files than allowed. %@ = max count.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximal %@ Dateien pro Nachricht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maximum %@ files per message"
+          }
+        }
+      }
+    },
+    "attachment_error_unsupported" : {
+      "comment" : "Error shown when an attached file has an unsupported type. %@ = file name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat einen nicht unterstützten Dateityp"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has an unsupported file type"
+          }
+        }
+      }
+    },
+    "attachment_photo_library" : {
+      "comment" : "Menu option to pick a photo from the photo library.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fotomediathek"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo Library"
+          }
+        }
+      }
+    },
+    "attachment_remove" : {
+      "comment" : "Accessibility label for the button to remove a staged attachment.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anhang entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove attachment"
+          }
+        }
+      }
+    },
+    "attachment_uploading" : {
+      "comment" : "Status label shown while files are being uploaded.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird hochgeladen…"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uploading…"
+          }
+        }
+      }
+    },
     "ai_phase_default" : {
       "comment" : "AI processing phase label for unknown/generic phases.",
       "extractionState" : "manual",
@@ -87,6 +213,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Back"
+          }
+        }
+      }
+    },
+    "close" : {
+      "comment" : "Accessibility label for the close/dismiss button in the toolbar.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schliessen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
           }
         }
       }
@@ -181,6 +325,24 @@
         }
       }
     },
+    "direct_contact" : {
+      "comment" : "Button label to contact support directly via email when the SDK cannot connect.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support direkt kontaktieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contact Support Directly"
+          }
+        }
+      }
+    },
     "discard" : {
       "comment" : "Button to discard a failed pending message.",
       "extractionState" : "manual",
@@ -199,20 +361,56 @@
         }
       }
     },
-    "empty_chat_description" : {
-      "comment" : "Subtitle in empty chat encouraging the user to send a message.",
+    "email_copied" : {
+      "comment" : "Brief label shown when the support email was copied to the clipboard as fallback.",
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sende eine Nachricht und wir melden uns bald."
+            "value" : "E-Mail kopiert"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Send a message below and we'll get back to you soon."
+            "value" : "Email copied"
+          }
+        }
+      }
+    },
+    "empty_chat_description" : {
+      "comment" : "First line in empty chat — explains the instant AI answer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du erhältst sofort eine Antwort basierend auf unserer Wissensdatenbank."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You'll get an instant answer from our knowledge base."
+          }
+        }
+      }
+    },
+    "empty_chat_human_note" : {
+      "comment" : "Second line in empty chat — reassures the user that a human reviews every conversation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unser Team prüft jede Anfrage und antwortet persönlich, falls nötig."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Our team reviews every conversation and will follow up personally if needed."
           }
         }
       }
@@ -241,14 +439,14 @@
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tippe unten um eine Unterhaltung zu starten."
+            "state" : "needs_review",
+            "value" : "Starte eine Unterhaltung um Hilfe zu bekommen oder deine Gedanken mit uns zu teilen!"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap below to start a conversation and get help."
+            "value" : "Start a conversation to get help or share your thoughts with us!"
           }
         }
       }
@@ -260,13 +458,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Unterhaltungen"
+            "value" : "Noch keine Chats"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Conversations"
+            "value" : "No Conversations yet"
           }
         }
       }
@@ -494,13 +692,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mehr laden..."
+            "value" : "Mehr laden"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Load more..."
+            "value" : "Load more"
           }
         }
       }
@@ -681,24 +879,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Thought about this"
-          }
-        }
-      }
-    },
-    "reply_sent" : {
-      "comment" : "Label shown when the AI has finished and sent a reply.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Antwort gesendet"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reply sent"
           }
         }
       }

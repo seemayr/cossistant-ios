@@ -13,6 +13,7 @@ enum ChatState: Equatable {
 /// When `conversationId` is nil, instantly shows the chat UI while creating
 /// the conversation in the background. Input is disabled until ready.
 public struct ChatView: View {
+  private let client: CossistantClient
   private let timeline: TimelineStore
   private let connection: ConnectionStore
   private let conversations: ConversationStore
@@ -26,6 +27,9 @@ public struct ChatView: View {
   @State private var activeConversationId: String?
   @State private var inputText = ""
   @State private var isSending = false
+  @State private var attachments: [FileAttachment] = []
+  @State private var attachmentError: AttachmentValidationError?
+  @FocusState private var isInputFocused: Bool
 
   private var activeConversation: Conversation? {
     guard let id = activeConversationId else { return nil }
@@ -50,6 +54,7 @@ public struct ChatView: View {
   }
 
   public init(
+    client: CossistantClient,
     timeline: TimelineStore,
     connection: ConnectionStore,
     conversations: ConversationStore,
@@ -59,6 +64,7 @@ public struct ChatView: View {
     context: SupportContext? = nil,
     onBack: (() -> Void)? = nil
   ) {
+    self.client = client
     self.timeline = timeline
     self.connection = connection
     self.conversations = conversations
@@ -208,15 +214,15 @@ public struct ChatView: View {
   private var statusBanner: some View {
     switch chatState {
     case .creating:
-      SupportLoadingView(R.string(.creating_conversation))
+      CossLoadingView(R.string(.creating_conversation))
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.vertical, 54)
         .transition(.fadeInScale)
 
     case .loading:
       SupportLoadingView(R.string(.loading_messages))
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.vertical, 54)
         .transition(.fadeInScale)
 
     case .failed(let message):
@@ -246,19 +252,26 @@ public struct ChatView: View {
   // MARK: - Chat Empty State
 
   private var chatEmptyState: some View {
-    VStack(spacing: 20) {
+    VStack(spacing: 6) {
+      
       ChatEmptyIllustration()
-
+        .padding(.bottom, 24)
+      
       Text(R.string(.empty_chat_title))
         .font(.headline)
-        .foregroundStyle(.secondary)
-
+        .foregroundStyle(.primary)
+      
       Text(R.string(.empty_chat_description))
         .font(.subheadline)
-        .foregroundStyle(.tertiary)
-        .multilineTextAlignment(.center)
+        .foregroundStyle(.secondary)
+      
+      Text(R.string(.empty_chat_human_note))
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .padding(.top, 32)
     }
-    .padding(.top, 60)
+    .multilineTextAlignment(.center)
+    .padding(.top, 54)
     .padding(.horizontal, 32)
     .transition(.fadeInScale)
   }
@@ -284,29 +297,58 @@ public struct ChatView: View {
   // MARK: - Input Bar
 
   private var inputBar: some View {
-    HStack(spacing: 12) {
-      TextField(R.string(.input_placeholder), text: $inputText, axis: .vertical)
-        .textFieldStyle(.plain)
-        .lineLimit(1...5)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(.secondary.opacity(0.12))
-        .clipShape(.rect(cornerRadius: 20))
-        .disabled(!isReady)
-
-      Button(action: sendMessage) {
-        Label(R.string(.send), systemSymbol: .arrowUpCircleFill)
-          .labelStyle(.iconOnly)
-          .font(.title)
-          .foregroundStyle(canSend ? Color.accentColor : .secondary.opacity(0.4))
+    VStack(spacing: 0) {
+      if !attachments.isEmpty {
+        AttachmentPreviewStrip(attachments: attachments) { id in
+          attachments.removeAll { $0.id == id }
+        }
+        Divider()
       }
-      .buttonStyle(HapticButtonStyle(haptic: .messageSent))
-      .disabled(!canSend)
+
+      HStack(spacing: 12) {
+        AttachmentPickerView(
+          attachments: $attachments,
+          validationError: $attachmentError,
+          onPickerWillPresent: { isInputFocused = false }
+        )
+
+        TextField(R.string(.input_placeholder), text: $inputText, axis: .vertical)
+          .focused($isInputFocused)
+          .textFieldStyle(.plain)
+          .lineLimit(1...5)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 10)
+          .background(.secondary.opacity(0.12))
+          .clipShape(.rect(cornerRadius: 20))
+          .disabled(!isReady)
+
+        Button(action: sendMessage) {
+          Label(R.string(.send), systemSymbol: .arrowUpCircleFill)
+            .labelStyle(.iconOnly)
+            .font(.title)
+            .foregroundStyle(canSend ? Color.accentColor : .secondary.opacity(0.4))
+        }
+        .buttonStyle(HapticButtonStyle(haptic: .messageSent))
+        .disabled(!canSend)
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 10)
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 10)
     .opacity(isReady ? 1 : 0.5)
     .animation(CossistantAnimation.quick, value: isReady)
+    .alert(
+      R.string(.error_title),
+      isPresented: Binding(
+        get: { attachmentError != nil },
+        set: { if !$0 { attachmentError = nil } }
+      )
+    ) {
+      Button("OK") { attachmentError = nil }
+    } message: {
+      if let error = attachmentError {
+        Text(error.localizedDescription)
+      }
+    }
   }
 
   // MARK: - State
@@ -314,7 +356,8 @@ public struct ChatView: View {
   private var isReady: Bool { chatState == .ready }
 
   private var canSend: Bool {
-    isReady && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
+    let hasText = !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    return isReady && (hasText || !attachments.isEmpty) && !isSending
   }
 
   // MARK: - Message Grouping
@@ -335,6 +378,15 @@ public struct ChatView: View {
       return false
     }
     let current = items[index]
+
+    // Tool grouping: consecutive tools cluster together
+    if current.type == .tool {
+      let previous = items[index - 1]
+      let result = previous.type == .tool
+      logGrouping(index: index, result: result, reason: result ? "consecutive tools" : "tool after non-tool")
+      return result
+    }
+
     guard current.type == .message else {
       logGrouping(index: index, result: false, reason: "type=\(current.type) (not message)")
       return false
@@ -388,7 +440,6 @@ public struct ChatView: View {
     let items = timeline.visibleItems
     let item = items[index]
     let text = (item.text ?? "").prefix(30)
-    print("[Grouping] #\(index) id=\(item.id ?? "nil") type=\(item.type) \"\(text)\" → \(result ? "GROUPED" : "NOT grouped") — \(reason)")
   }
 
   // MARK: - Actions
@@ -433,12 +484,22 @@ public struct ChatView: View {
 
   private func sendMessage() {
     let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !text.isEmpty, isReady else { return }
+    guard isReady, !text.isEmpty || !attachments.isEmpty else { return }
+
+    let filesToSend = attachments
     inputText = ""
+    attachments = []
     isSending = true
     SupportHaptics.play(.messageSent)
+
     Task {
-      try? await timeline.sendMessage(text: text, visitorId: visitorId)
+      if filesToSend.isEmpty {
+        try? await timeline.sendMessage(text: text, visitorId: visitorId)
+      } else {
+        try? await client.sendMessageWithAttachments(
+          text: text, attachments: filesToSend, visitorId: visitorId
+        )
+      }
       isSending = false
     }
   }
@@ -545,18 +606,10 @@ private struct AIProgressBubbleView: View {
   let phase: String?
   let message: String?
 
-  private var isDone: Bool { phase == "done" }
-
   var body: some View {
     HStack {
       HStack(spacing: 8) {
-        if isDone {
-          Image(systemSymbol: .checkmarkCircleFill)
-            .font(.caption)
-            .foregroundStyle(.green)
-        } else {
-          AnimatedDotsView(style: .pulse, dotSize: 5, spacing: 3)
-        }
+        AnimatedDotsView(style: .pulse, dotSize: 5, spacing: 3)
 
         Text(phaseLabel)
           .font(.caption)
@@ -564,21 +617,113 @@ private struct AIProgressBubbleView: View {
       }
       .padding(.horizontal, 14)
       .padding(.vertical, 10)
-      .background(isDone ? Color.green.opacity(0.08) : Color.accentColor.opacity(0.08))
+      .background(Color.accentColor.opacity(0.08))
       .clipShape(.rect(cornerRadius: 16))
       Spacer()
     }
   }
 
   private var phaseLabel: String {
-    if isDone { return R.string(.reply_sent) }
     if let message, !message.isEmpty { return message }
     switch phase {
     case "thinking": return R.string(.ai_phase_thinking)
     case "searching": return R.string(.ai_phase_searching)
     case "generating": return R.string(.ai_phase_generating)
+    case let p?: return p.capitalized
     default: return R.string(.ai_phase_default)
     }
+  }
+}
+
+// MARK: - Attachment Preview Strip
+
+private struct AttachmentPreviewStrip: View {
+  let attachments: [FileAttachment]
+  let onRemove: (UUID) -> Void
+
+  var body: some View {
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 8) {
+        ForEach(attachments) { attachment in
+          AttachmentThumbnail(attachment: attachment) {
+            onRemove(attachment.id)
+          }
+        }
+      }
+      .padding(.horizontal, 16)
+      .padding(.vertical, 8)
+    }
+  }
+}
+
+private struct AttachmentThumbnail: View {
+  let attachment: FileAttachment
+  let onRemove: () -> Void
+
+  var body: some View {
+    ZStack(alignment: .topTrailing) {
+      if attachment.isImage {
+        imagePreview
+      } else {
+        filePreview
+      }
+
+      Button(action: onRemove) {
+        Image(systemSymbol: .xmarkCircleFill)
+          .font(.system(size: 18))
+          .symbolRenderingMode(.palette)
+          .foregroundStyle(.white, .black.opacity(0.6))
+      }
+      .offset(x: 6, y: -6)
+      .accessibilityLabel(R.string(.attachment_remove))
+    }
+    .accessibilityLabel(attachment.fileName)
+  }
+
+  @ViewBuilder
+  private var imagePreview: some View {
+    #if canImport(UIKit)
+    if let uiImage = UIImage(data: attachment.data) {
+      Image(uiImage: uiImage)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 60, height: 60)
+        .clipShape(.rect(cornerRadius: 8))
+    }
+    #elseif canImport(AppKit)
+    if let nsImage = NSImage(data: attachment.data) {
+      Image(nsImage: nsImage)
+        .resizable()
+        .scaledToFill()
+        .frame(width: 60, height: 60)
+        .clipShape(.rect(cornerRadius: 8))
+    }
+    #endif
+  }
+
+  private var filePreview: some View {
+    VStack(spacing: 2) {
+      Image(systemSymbol: .docFill)
+        .font(.title3)
+        .foregroundStyle(.secondary)
+      Text(attachment.fileName)
+        .font(.caption2)
+        .lineLimit(1)
+        .truncationMode(.middle)
+      Text(formattedSize)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+    }
+    .frame(width: 60, height: 60)
+    .background(.secondary.opacity(0.08))
+    .clipShape(.rect(cornerRadius: 8))
+  }
+
+  private var formattedSize: String {
+    ByteCountFormatter.string(
+      fromByteCount: Int64(attachment.fileSizeBytes),
+      countStyle: .file
+    )
   }
 }
 
@@ -588,12 +733,12 @@ private struct SeenIndicatorView: View {
   let receipts: [SeenReceipt]
 
   var body: some View {
-    HStack {
+    HStack(spacing: 4) {
       Spacer()
       HStack(spacing: -4) {
         ForEach(receipts.prefix(3)) { receipt in
-          seenAvatar(name: receipt.name, image: receipt.image)
-            .overlay(Circle().stroke(.background, lineWidth: 1.5))
+          seenAvatar(for: receipt)
+            .overlay(RoundedRectangle(cornerRadius: 18 * 0.3).stroke(.background, lineWidth: 1.5))
         }
         if receipts.count > 3 {
           Text("+\(receipts.count - 3)")
@@ -601,18 +746,19 @@ private struct SeenIndicatorView: View {
             .foregroundStyle(.secondary)
         }
       }
+      
       Text(R.string(.seen))
         .font(.caption2)
         .foregroundStyle(.secondary)
     }
   }
 
-  private func seenAvatar(name: String?, image: String?) -> some View {
+  private func seenAvatar(for receipt: SeenReceipt) -> some View {
     let info = AgentInfo(
-      id: "",
-      name: name ?? "?",
-      image: image,
-      kind: .human,
+      id: receipt.actorId,
+      name: receipt.name ?? "?",
+      image: receipt.image,
+      kind: receipt.actorType == "ai_agent" ? .ai : .human,
       onlineStatus: .offline
     )
     return AgentAvatarView(info: info, size: 18)

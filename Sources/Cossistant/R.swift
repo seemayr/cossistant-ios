@@ -7,6 +7,7 @@ enum R {
     case support_title
     case conversation_title
     case back
+    case close
 
     // MARK: - Loading States
     case connecting
@@ -20,6 +21,8 @@ enum R {
     case retry
     case retry_short
     case discard
+    case direct_contact
+    case email_copied
 
     // MARK: - Conversation List
     case new_conversation_cta
@@ -37,6 +40,7 @@ enum R {
     // MARK: - Chat
     case empty_chat_title
     case empty_chat_description
+    case empty_chat_human_note
     case input_placeholder
     case load_older
     case send
@@ -56,7 +60,6 @@ enum R {
     case ai_phase_searching
     case ai_phase_generating
     case ai_phase_default
-    case reply_sent
 
     // MARK: - Events
     case event_resolved
@@ -72,6 +75,15 @@ enum R {
     case reasoning_active
     case file_default_name
     case image_accessibility
+
+    // MARK: - Attachments
+    case attachment_photo_library
+    case attachment_choose_file
+    case attachment_remove
+    case attachment_error_too_large
+    case attachment_error_unsupported
+    case attachment_error_too_many
+    case attachment_uploading
   }
 
   static func string(_ rstring: RString, _ args: String...) -> String {

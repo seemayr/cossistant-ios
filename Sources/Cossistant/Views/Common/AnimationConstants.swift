@@ -33,6 +33,16 @@ extension AnyTransition {
       .animation(.easeOut(duration: 0.25))
   }
 
+  /// Subtle insertion for list rows — fades in with a gentle vertical nudge.
+  static var listRow: AnyTransition {
+    .asymmetric(
+      insertion: .opacity
+        .combined(with: .offset(y: 10))
+        .animation(.easeOut(duration: 0.3)),
+      removal: .opacity.animation(.easeOut(duration: 0.15))
+    )
+  }
+
   /// Scale from 0.5 with fade — ideal for images loading in.
   static var scaleIn: AnyTransition {
     .scale(scale: 0.5)
