@@ -3,7 +3,7 @@ import ULID
 
 // MARK: - Timeline Item
 
-public struct TimelineItem: Codable, Sendable, Identifiable {
+public struct TimelineItem: Codable, Sendable, Identifiable, Equatable {
   public let id: String?
   public let conversationId: String
   public let organizationId: String
@@ -33,7 +33,7 @@ public enum TimelineItemType: String, Codable, Sendable {
 
 // MARK: - Timeline Item Parts
 
-public enum TimelineItemPart: Codable, Sendable {
+public enum TimelineItemPart: Codable, Sendable, Equatable {
   case text(TextPart)
   case reasoning(ReasoningPart)
   case tool(ToolPart)
@@ -109,7 +109,7 @@ public enum TimelineItemPart: Codable, Sendable {
 
 // MARK: - Part Types
 
-public struct TextPart: Codable, Sendable {
+public struct TextPart: Codable, Sendable, Equatable {
   public let type: String
   public let text: String
   public let state: String?
@@ -121,13 +121,13 @@ public struct TextPart: Codable, Sendable {
   }
 }
 
-public struct ReasoningPart: Codable, Sendable {
+public struct ReasoningPart: Codable, Sendable, Equatable {
   public let type: String
   public let text: String
   public let state: String?
 }
 
-public struct ToolPart: Codable, Sendable {
+public struct ToolPart: Codable, Sendable, Equatable {
   public let type: String
   public let toolCallId: String
   public let toolName: String
@@ -135,14 +135,14 @@ public struct ToolPart: Codable, Sendable {
   public let errorText: String?
 }
 
-public struct SourceUrlPart: Codable, Sendable {
+public struct SourceUrlPart: Codable, Sendable, Equatable {
   public let type: String
   public let sourceId: String
   public let url: String
   public let title: String?
 }
 
-public struct SourceDocumentPart: Codable, Sendable {
+public struct SourceDocumentPart: Codable, Sendable, Equatable {
   public let type: String
   public let sourceId: String
   public let mediaType: String
@@ -150,7 +150,7 @@ public struct SourceDocumentPart: Codable, Sendable {
   public let filename: String?
 }
 
-public struct FilePart: Codable, Sendable {
+public struct FilePart: Codable, Sendable, Equatable {
   public let type: String
   public let url: String
   public let mediaType: String
@@ -166,7 +166,7 @@ public struct FilePart: Codable, Sendable {
   }
 }
 
-public struct ImagePart: Codable, Sendable {
+public struct ImagePart: Codable, Sendable, Equatable {
   public let type: String
   public let url: String
   public let mediaType: String
@@ -187,7 +187,7 @@ public struct ImagePart: Codable, Sendable {
   }
 }
 
-public struct EventPart: Codable, Sendable {
+public struct EventPart: Codable, Sendable, Equatable {
   public let type: String
   public let eventType: String
   public let actorUserId: String?
@@ -197,7 +197,7 @@ public struct EventPart: Codable, Sendable {
   public let message: String?
 }
 
-public struct MetadataPart: Codable, Sendable {
+public struct MetadataPart: Codable, Sendable, Equatable {
   public let type: String
   public let source: String
 }

@@ -29,6 +29,7 @@ public struct ChatView: View {
   @State private var isSending = false
   @State private var attachments: [FileAttachment] = []
   @State private var attachmentError: AttachmentValidationError?
+  @State private var itemGroups: [ChatItemGroup] = []
   @FocusState private var isInputFocused: Bool
 
   private var activeConversation: Conversation? {
@@ -111,6 +112,9 @@ public struct ChatView: View {
     .task {
       await setup()
     }
+    .onChange(of: timeline.visibleItems) {
+      rebuildItemGroups()
+    }
   }
 
   // MARK: - Message Area
@@ -137,15 +141,13 @@ public struct ChatView: View {
             .buttonStyle(HapticButtonStyle())
           }
 
-          ForEach(groupedItems, id: \.item.id) { entry in
-            MessageBubbleView(
-              item: entry.item,
+          ForEach(Array(itemGroups.enumerated()), id: \.element.id) { _, group in
+            ItemGroupView(
+              group: group,
               visitorId: visitorId,
-              agents: agents,
-              isGrouped: entry.isGrouped
+              agents: agents
             )
-            .id(entry.item.id)
-            .padding(.top, entry.isGrouped ? 4 : 12)
+            .padding(.top, 12)
             .transition(.slideUpFade)
           }
 
@@ -360,88 +362,6 @@ public struct ChatView: View {
     return isReady && (hasText || !attachments.isEmpty) && !isSending
   }
 
-  // MARK: - Message Grouping
-
-  private var groupedItems: [(item: TimelineItem, isGrouped: Bool)] {
-    timeline.visibleItems.enumerated().map { index, item in
-      (item: item, isGrouped: isGroupedWithPrevious(index: index))
-    }
-  }
-
-  /// Five-minute threshold for grouping consecutive messages from the same sender.
-  private static let groupingInterval: TimeInterval = 300
-
-  private func isGroupedWithPrevious(index: Int) -> Bool {
-    let items = timeline.visibleItems
-    guard index > 0 else {
-      logGrouping(index: index, result: false, reason: "first item")
-      return false
-    }
-    let current = items[index]
-
-    // Tool grouping: consecutive tools cluster together
-    if current.type == .tool {
-      let previous = items[index - 1]
-      let result = previous.type == .tool
-      logGrouping(index: index, result: result, reason: result ? "consecutive tools" : "tool after non-tool")
-      return result
-    }
-
-    guard current.type == .message else {
-      logGrouping(index: index, result: false, reason: "type=\(current.type) (not message)")
-      return false
-    }
-
-    // Find the previous message, skipping events/tools in between
-    guard let previous = items[..<index].last(where: { $0.type == .message }) else {
-      logGrouping(index: index, result: false, reason: "no previous message found")
-      return false
-    }
-
-    // Same sender?
-    guard sameSender(current, previous) else {
-      logGrouping(index: index, result: false, reason: "different sender — current: \(senderDescription(current)), previous: \(senderDescription(previous))")
-      return false
-    }
-
-    // Within time threshold?
-    guard let currentDate = SupportFormatters.parseISO8601( current.createdAt),
-      let previousDate = SupportFormatters.parseISO8601( previous.createdAt) else {
-      logGrouping(index: index, result: false, reason: "date parse failed — current: \"\(current.createdAt)\", previous: \"\(previous.createdAt)\"")
-      return false
-    }
-    let delta = currentDate.timeIntervalSince(previousDate)
-    let withinThreshold = delta < Self.groupingInterval
-    logGrouping(index: index, result: withinThreshold, reason: withinThreshold
-      ? "same sender, \(Int(delta))s apart (< \(Int(Self.groupingInterval))s)"
-      : "same sender but \(Int(delta))s apart (>= \(Int(Self.groupingInterval))s threshold)")
-    return withinThreshold
-  }
-
-  private func sameSender(_ a: TimelineItem, _ b: TimelineItem) -> Bool {
-    if let av = a.visitorId, let bv = b.visitorId, av == bv { return true }
-    if let au = a.userId, let bu = b.userId, au == bu { return true }
-    if let aa = a.aiAgentId, let ba = b.aiAgentId, aa == ba { return true }
-    return false
-  }
-
-  // MARK: - Grouping Debug
-
-  private func senderDescription(_ item: TimelineItem) -> String {
-    var parts: [String] = []
-    if let v = item.visitorId { parts.append("visitor=\(v)") }
-    if let u = item.userId { parts.append("user=\(u)") }
-    if let a = item.aiAgentId { parts.append("ai=\(a)") }
-    if parts.isEmpty { parts.append("no sender IDs") }
-    return "[\(parts.joined(separator: ", "))]"
-  }
-
-  private func logGrouping(index: Int, result: Bool, reason: String) {
-    let items = timeline.visibleItems
-    let item = items[index]
-    let text = (item.text ?? "").prefix(30)
-  }
-
   // MARK: - Actions
 
   private func setup() async {
@@ -505,10 +425,196 @@ public struct ChatView: View {
   }
 
   private func scrollToBottom(proxy: ScrollViewProxy) {
-    let lastId = timeline.pendingMessages.last?.id ?? timeline.visibleItems.last?.id
+    let lastId = timeline.pendingMessages.last?.id ?? itemGroups.last?.items.last?.id
     guard let lastId else { return }
     withCossistantAnimation(.easeOut(duration: 0.2)) {
       proxy.scrollTo(lastId, anchor: .bottom)
+    }
+  }
+
+  private func rebuildItemGroups() {
+    itemGroups = ChatItemFormatter.makeGroups(from: timeline.visibleItems)
+  }
+}
+
+private struct PreparedTimelineItem: Identifiable {
+  let id: String
+  let item: TimelineItem
+  let createdAt: Date?
+  let formattedTime: String
+}
+
+private struct ChatItemGroup: Identifiable {
+  enum Kind: Equatable {
+    case message(GroupSenderKey)
+    case tool
+    case event
+    case single
+  }
+
+  let id: String
+  let kind: Kind
+  var items: [PreparedTimelineItem]
+}
+
+private enum GroupSenderKey: Equatable {
+  case visitor(String)
+  case user(String)
+  case ai(String)
+}
+
+private enum ChatItemFormatter {
+  private static let groupingInterval: TimeInterval = 300
+
+  static func makeGroups(from items: [TimelineItem]) -> [ChatItemGroup] {
+    var groups: [ChatItemGroup] = []
+
+    for (index, item) in items.enumerated() {
+      let prepared = PreparedTimelineItem(
+        id: item.id ?? "timeline-item-\(index)-\(item.createdAt)",
+        item: item,
+        createdAt: SupportFormatters.parseISO8601(item.createdAt),
+        formattedTime: formattedTime(for: item.createdAt)
+      )
+
+      if let lastIndex = groups.indices.last, canAppend(prepared, to: groups[lastIndex]) {
+        groups[lastIndex].items.append(prepared)
+      } else {
+        groups.append(
+          ChatItemGroup(
+            id: "group-\(prepared.id)",
+            kind: groupKind(for: item),
+            items: [prepared]
+          )
+        )
+      }
+    }
+
+    return groups
+  }
+
+  private static func groupKind(for item: TimelineItem) -> ChatItemGroup.Kind {
+    switch item.type {
+    case .message:
+      if let sender = senderKey(for: item) {
+        return .message(sender)
+      }
+      return .single
+    case .tool:
+      return .tool
+    case .event:
+      return .event
+    case .identification:
+      return .single
+    }
+  }
+
+  private static func canAppend(_ item: PreparedTimelineItem, to group: ChatItemGroup) -> Bool {
+    switch (group.kind, groupKind(for: item.item)) {
+    case (.message(let lhsSender), .message(let rhsSender)):
+      guard lhsSender == rhsSender, let previous = group.items.last?.createdAt else {
+        return false
+      }
+      guard let current = item.createdAt else { return false }
+      return current.timeIntervalSince(previous) < groupingInterval
+    case (.tool, .tool):
+      return true
+    case (.event, .event):
+      return true
+    default:
+      return false
+    }
+  }
+
+  private static func senderKey(for item: TimelineItem) -> GroupSenderKey? {
+    if let visitorId = item.visitorId {
+      return .visitor(visitorId)
+    }
+    if let userId = item.userId {
+      return .user(userId)
+    }
+    if let aiAgentId = item.aiAgentId {
+      return .ai(aiAgentId)
+    }
+    return nil
+  }
+
+  private static func formattedTime(for createdAt: String) -> String {
+    guard let date = SupportFormatters.parseISO8601(createdAt) else { return "" }
+    return SupportFormatters.timeOnly.string(from: date)
+  }
+}
+
+private struct ItemGroupView: View {
+  let group: ChatItemGroup
+  let visitorId: String?
+  let agents: AgentRegistry
+
+  var body: some View {
+    switch group.kind {
+    case .message:
+      messageGroup
+    case .tool:
+      toolGroup
+    case .event:
+      eventGroup
+    case .single:
+      singleGroup
+    }
+  }
+
+  private var messageGroup: some View {
+    let isFromVisitor = group.items.first?.item.visitorId == visitorId && group.items.first?.item.visitorId != nil
+
+    return VStack(spacing: 4) {
+      ForEach(Array(group.items.enumerated()), id: \.element.id) { index, prepared in
+        MessageBubbleView(
+          item: prepared.item,
+          visitorId: visitorId,
+          agents: agents,
+          showsAgentIdentity: !isFromVisitor && index == 0,
+          showsTimestamp: index == group.items.count - 1,
+          formattedTime: prepared.formattedTime
+        )
+        .id(prepared.id)
+      }
+    }
+  }
+
+  private var toolGroup: some View {
+    VStack(spacing: 4) {
+      ForEach(group.items) { prepared in
+        ToolActivityBubbleView(item: prepared.item)
+          .id(prepared.id)
+      }
+    }
+  }
+
+  private var eventGroup: some View {
+    VStack(spacing: 4) {
+      ForEach(group.items) { prepared in
+        EventBubbleView(
+          item: prepared.item,
+          senderInfo: agents.sender(for: prepared.item)
+        )
+        .id(prepared.id)
+      }
+    }
+  }
+
+  private var singleGroup: some View {
+    VStack(spacing: 4) {
+      ForEach(group.items) { prepared in
+        MessageBubbleView(
+          item: prepared.item,
+          visitorId: visitorId,
+          agents: agents,
+          showsAgentIdentity: prepared.item.visitorId == nil,
+          showsTimestamp: true,
+          formattedTime: prepared.formattedTime
+        )
+        .id(prepared.id)
+      }
     }
   }
 }
@@ -680,25 +786,8 @@ private struct AttachmentThumbnail: View {
     .accessibilityLabel(attachment.fileName)
   }
 
-  @ViewBuilder
   private var imagePreview: some View {
-    #if canImport(UIKit)
-    if let uiImage = UIImage(data: attachment.data) {
-      Image(uiImage: uiImage)
-        .resizable()
-        .scaledToFill()
-        .frame(width: 60, height: 60)
-        .clipShape(.rect(cornerRadius: 8))
-    }
-    #elseif canImport(AppKit)
-    if let nsImage = NSImage(data: attachment.data) {
-      Image(nsImage: nsImage)
-        .resizable()
-        .scaledToFill()
-        .frame(width: 60, height: 60)
-        .clipShape(.rect(cornerRadius: 8))
-    }
-    #endif
+    DataImageView(data: attachment.data, size: CGSize(width: 60, height: 60))
   }
 
   private var filePreview: some View {

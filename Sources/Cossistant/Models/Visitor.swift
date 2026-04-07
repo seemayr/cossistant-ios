@@ -2,7 +2,7 @@ import Foundation
 
 /// Free-form metadata: keys are strings, values are string, number, boolean, or null.
 /// Encoded as a JSON object with heterogeneous values.
-public struct VisitorMetadata: Codable, Sendable {
+public struct VisitorMetadata: Codable, Sendable, Equatable, Hashable {
   public var storage: [String: MetadataValue]
 
   public init(_ dictionary: [String: MetadataValue] = [:]) {
@@ -25,7 +25,7 @@ public struct VisitorMetadata: Codable, Sendable {
   }
 }
 
-public enum MetadataValue: Codable, Sendable, Equatable {
+public enum MetadataValue: Codable, Sendable, Equatable, Hashable {
   case string(String)
   case number(Double)
   case bool(Bool)

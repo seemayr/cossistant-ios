@@ -208,6 +208,7 @@ public final class TimelineStore {
   // MARK: - WebSocket Event Handling
 
   func handleTimelineItemCreated(_ payload: TimelineItemEventPayload) {
+    logTimelineItem(payload.item, action: "created")
     guard payload.conversationId == activeConversationId else { return }
 
     // Reconcile: if WS delivers a message we sent, remove the pending version
@@ -224,8 +225,25 @@ public final class TimelineStore {
   }
 
   func handleTimelineItemUpdated(_ payload: TimelineItemEventPayload) {
+    logTimelineItem(payload.item, action: "updated")
     guard payload.conversationId == activeConversationId else { return }
     guard let index = items.firstIndex(where: { $0.id == payload.item.id }) else { return }
     items[index] = payload.item
+  }
+
+  // MARK: - Logging
+
+  private func logTimelineItem(_ item: TimelineItem, action: String) {
+    let eventType = item.parts.compactMap { if case .event(let e) = $0 { e.eventType } else { nil } }.first
+    let toolName = item.tool ?? item.parts.compactMap { if case .tool(let t) = $0 { t.toolName } else { nil } }.first
+    let detail = eventType ?? toolName
+    let sender = item.visitorId.map { "visitor:\($0)" }
+      ?? item.aiAgentId.map { "ai:\($0)" }
+      ?? item.userId.map { "user:\($0)" }
+      ?? "unknown"
+    SupportLogger.timelineItemEvent(
+      action: action, type: item.type, eventType: detail,
+      visibility: item.visibility, sender: sender
+    )
   }
 }

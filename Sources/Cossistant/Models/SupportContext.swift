@@ -18,7 +18,7 @@ import Foundation
 ///   )
 /// )
 /// ```
-public struct SupportContext: Sendable {
+public struct SupportContext: Sendable, Equatable, Hashable {
   /// Where the support request originated (e.g. "settings", "game_loading", "group_view").
   public let source: String
 

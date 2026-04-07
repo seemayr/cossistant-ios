@@ -118,6 +118,16 @@ enum SupportLogger {
     log("❌ \(msg)")
   }
 
+  // MARK: - Timeline Items
+
+  static func timelineItemEvent(action: String, type: TimelineItemType, eventType: String?,
+                                 visibility: TimelineItemVisibility, sender: String) {
+    let typePart = eventType.map { "\(type.rawValue):\($0)" } ?? type.rawValue
+    let msg = "[Timeline] \(action) \(typePart)(\(visibility.rawValue)) sender=\(sender)"
+    store.debug("\(msg)")
+    log(msg)
+  }
+
   // MARK: - Client
 
   static func bootstrapStarted() {

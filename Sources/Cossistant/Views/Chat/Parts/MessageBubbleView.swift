@@ -6,18 +6,24 @@ struct MessageBubbleView: View {
   let item: TimelineItem
   let isFromVisitor: Bool
   let senderInfo: AgentInfo?
-  let isGrouped: Bool
+  let showsAgentIdentity: Bool
+  let showsTimestamp: Bool
+  let formattedTime: String
   
   init(
     item: TimelineItem,
     visitorId: String?,
     agents: AgentRegistry,
-    isGrouped: Bool = false
+    showsAgentIdentity: Bool = false,
+    showsTimestamp: Bool = false,
+    formattedTime: String = ""
   ) {
     self.item = item
     self.isFromVisitor = item.visitorId != nil && item.visitorId == visitorId
     self.senderInfo = agents.sender(for: item)
-    self.isGrouped = isGrouped
+    self.showsAgentIdentity = showsAgentIdentity
+    self.showsTimestamp = showsTimestamp
+    self.formattedTime = formattedTime
   }
   
   var body: some View {
@@ -26,9 +32,19 @@ struct MessageBubbleView: View {
     } else if item.type == .tool {
       ToolActivityBubbleView(item: item)
     } else if isFromVisitor {
-      VisitorBubbleView(item: item, isGrouped: isGrouped)
+      VisitorBubbleView(
+        item: item,
+        showsTimestamp: showsTimestamp,
+        formattedTime: formattedTime
+      )
     } else {
-      AgentBubbleView(item: item, senderInfo: senderInfo, isGrouped: isGrouped)
+      AgentBubbleView(
+        item: item,
+        senderInfo: senderInfo,
+        showsIdentity: showsAgentIdentity,
+        showsTimestamp: showsTimestamp,
+        formattedTime: formattedTime
+      )
     }
   }
 }
@@ -37,7 +53,8 @@ struct MessageBubbleView: View {
 
 private struct VisitorBubbleView: View {
   let item: TimelineItem
-  let isGrouped: Bool
+  let showsTimestamp: Bool
+  let formattedTime: String
   
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
@@ -62,8 +79,8 @@ private struct VisitorBubbleView: View {
           }
         }
         
-        if !isGrouped {
-          Text(Self.formattedTime(item.createdAt))
+        if showsTimestamp, !formattedTime.isEmpty {
+          Text(formattedTime)
             .font(.caption2)
             .fontWeight(.semibold)
             .padding(.horizontal, 4)
@@ -78,11 +95,6 @@ private struct VisitorBubbleView: View {
       }
     }
   }
-  
-  static func formattedTime(_ createdAt: String) -> String {
-    guard let date = SupportFormatters.parseISO8601( createdAt) else { return "" }
-    return SupportFormatters.timeOnly.string(from: date)
-  }
 }
 
 // MARK: - Agent Bubble (left-aligned, secondary background, avatar)
@@ -90,20 +102,22 @@ private struct VisitorBubbleView: View {
 private struct AgentBubbleView: View {
   let item: TimelineItem
   let senderInfo: AgentInfo?
-  let isGrouped: Bool
+  let showsIdentity: Bool
+  let showsTimestamp: Bool
+  let formattedTime: String
   
   var body: some View {
     HStack(alignment: .top, spacing: 8) {
-      if isGrouped {
+      if showsIdentity {
+        AgentAvatarView(info: senderInfo, size: 28)
+      } else {
         Color.clear
           .frame(width: 28, height: 0)
-      } else {
-        AgentAvatarView(info: senderInfo, size: 28)
       }
       
       VStack(alignment: .leading, spacing: -6) {
         VStack(alignment: .leading, spacing: 4) {
-          if !isGrouped, let name = senderInfo?.name {
+          if showsIdentity, let name = senderInfo?.name {
             Text(name)
               .font(.caption)
               .fontWeight(.medium)
@@ -126,11 +140,10 @@ private struct AgentBubbleView: View {
           }
         }
         
-        if !isGrouped {
-          Text(VisitorBubbleView.formattedTime(item.createdAt))
+        if showsTimestamp, !formattedTime.isEmpty {
+          Text(formattedTime)
             .font(.caption2)
             .fontWeight(.semibold)
-            .foregroundStyle(.black)
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
             .foregroundStyle(.primary)
@@ -189,7 +202,7 @@ private struct RichPartsView: View {
 
 // MARK: - Event Bubble
 
-private struct EventBubbleView: View {
+struct EventBubbleView: View {
   let item: TimelineItem
   let senderInfo: AgentInfo?
   
@@ -265,7 +278,7 @@ private struct EventBubbleView: View {
 
 // MARK: - Tool Activity Bubble
 
-private struct ToolActivityBubbleView: View {
+struct ToolActivityBubbleView: View {
   let item: TimelineItem
   
   var body: some View {

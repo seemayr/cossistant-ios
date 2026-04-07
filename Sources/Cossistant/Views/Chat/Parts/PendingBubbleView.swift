@@ -70,25 +70,8 @@ struct PendingBubbleView: View {
     HStack(spacing: 4) {
       ForEach(message.attachments) { attachment in
         if attachment.isImage {
-          #if canImport(UIKit)
-          if let uiImage = UIImage(data: attachment.data) {
-            Image(uiImage: uiImage)
-              .resizable()
-              .scaledToFill()
-              .frame(width: 48, height: 48)
-              .clipShape(.rect(cornerRadius: 8))
-              .opacity(isFailed ? 0.6 : 0.8)
-          }
-          #elseif canImport(AppKit)
-          if let nsImage = NSImage(data: attachment.data) {
-            Image(nsImage: nsImage)
-              .resizable()
-              .scaledToFill()
-              .frame(width: 48, height: 48)
-              .clipShape(.rect(cornerRadius: 8))
-              .opacity(isFailed ? 0.6 : 0.8)
-          }
-          #endif
+          DataImageView(data: attachment.data, size: CGSize(width: 48, height: 48))
+            .opacity(isFailed ? 0.6 : 0.8)
         } else {
           VStack(spacing: 2) {
             Image(systemSymbol: .docFill)
