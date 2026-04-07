@@ -49,7 +49,15 @@ public struct ConversationListView: View {
           Task { try? await conversations.loadMore() }
         }, label: {
           HStack(spacing: 4) {
-            Image(systemSymbol: .ellipsisRectangle)
+            if conversations.isLoading {
+              ProgressView()
+                .controlSize(.small)
+                .tint(.white)
+                .padding(.trailing, 3)
+            } else {
+              Image(systemSymbol: .ellipsisRectangle)
+            }
+            
             Text(R.string(.load_more))
           }
           .font(.subheadline)
@@ -61,21 +69,25 @@ public struct ConversationListView: View {
           .clipShape(.rect(cornerRadius: 8))
         })
         .buttonStyle(HapticButtonStyle())
+        .opacity(conversations.isLoading ? 0.7 : 1)
+        .disabled(conversations.isLoading)
+        .animation(.easeInOut(duration: 0.1), value: conversations.isLoading)
         .frame(maxWidth: .infinity, alignment: .center)
         .listRowSeparator(.hidden)
         .transition(.fadeInScale)
       }
     }
     .listStyle(.plain)
-    .cossistantAnimation(CossistantAnimation.smooth, value: conversations.sorted.map(\.id))
-    .cossistantAnimation(CossistantAnimation.smooth, value: conversations.hasMore)
+    .refreshable { try? await conversations.load() }
     .overlay {
       if conversations.isLoading && conversations.conversations.isEmpty {
         SupportLoadingOverlayView(R.string(.loading_conversations))
+          .allowsHitTesting(false)
       } else if !conversations.hasDisplayableConversations {
         ConversationListEmptyView()
           .padding(.bottom, 48)
           .transition(.fadeInScale)
+          .allowsHitTesting(false)
       }
     }
     .safeAreaInset(edge: .bottom) {

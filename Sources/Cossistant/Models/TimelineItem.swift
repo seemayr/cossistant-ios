@@ -1,4 +1,5 @@
 import Foundation
+import ULID
 
 // MARK: - Timeline Item
 
@@ -212,29 +213,31 @@ public struct TimelineResponse: Codable, Sendable {
 public struct SendMessageRequest: Codable, Sendable {
   public let conversationId: String
   public let item: SendMessageItem
+  public let createIfPending: Bool?
 
   public init(conversationId: String, text: String, visitorId: String? = nil) {
     self.conversationId = conversationId
     self.item = SendMessageItem(
-      type: .message,
       text: text,
       parts: [.text(TextPart(text: text))],
       visitorId: visitorId
     )
+    self.createIfPending = true
   }
 
   public init(conversationId: String, text: String, parts: [TimelineItemPart], visitorId: String?) {
     self.conversationId = conversationId
     self.item = SendMessageItem(
-      type: .message,
       text: text,
       parts: parts,
       visitorId: visitorId
     )
+    self.createIfPending = true
   }
 }
 
 public struct SendMessageItem: Codable, Sendable {
+  public let id: String?
   public let type: TimelineItemType
   public let text: String
   public let parts: [TimelineItemPart]?
@@ -242,12 +245,14 @@ public struct SendMessageItem: Codable, Sendable {
   public let visitorId: String?
 
   public init(
+    id: String? = ULID().ulidString,
     type: TimelineItemType = .message,
     text: String,
     parts: [TimelineItemPart]? = nil,
     visibility: TimelineItemVisibility = .public,
     visitorId: String? = nil
   ) {
+    self.id = id
     self.type = type
     self.text = text
     self.parts = parts

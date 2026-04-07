@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import SwiftUI
 
 /// Observable store for conversation state.
 @MainActor
@@ -48,6 +49,7 @@ public final class ConversationStore {
 
   /// Fetches the first page of conversations.
   public func load() async throws {
+    guard !isLoading else { return }
     currentPage = 1
     isLoading = true
     defer { isLoading = false }
@@ -83,8 +85,10 @@ public final class ConversationStore {
     let response: ListConversationsResponse = try await rest.request(
       .listConversations(page: currentPage, limit: pageSize)
     )
-    conversations.append(contentsOf: response.conversations)
-    hasMore = response.pagination.hasMore
+    withCossistantAnimation(CossistantAnimation.smooth) {
+      conversations.append(contentsOf: response.conversations)
+      hasMore = response.pagination.hasMore
+    }
     return response
   }
 
@@ -108,7 +112,9 @@ public final class ConversationStore {
     let response: CreateConversationResponse = try await rest.request(
       .createConversation, body: request
     )
-    conversations.insert(response.conversation, at: 0)
+    withCossistantAnimation(CossistantAnimation.smooth) {
+      conversations.insert(response.conversation, at: 0)
+    }
     return response
   }
 
@@ -136,19 +142,23 @@ public final class ConversationStore {
 
   func handleConversationCreated(_ payload: ConversationCreatedPayload) {
     guard !conversations.contains(where: { $0.id == payload.conversation.id }) else { return }
-    conversations.insert(payload.conversation, at: 0)
+    withCossistantAnimation(CossistantAnimation.smooth) {
+      conversations.insert(payload.conversation, at: 0)
+    }
   }
 
   func handleConversationUpdated(_ payload: ConversationUpdatedPayload) {
     guard let index = conversations.firstIndex(where: { $0.id == payload.conversationId }) else { return }
-    if let title = payload.updates.title {
-      conversations[index].title = title
-    }
-    if let status = payload.updates.status {
-      conversations[index].status = status
-    }
-    if let deletedAt = payload.updates.deletedAt {
-      conversations[index].deletedAt = deletedAt
+    withCossistantAnimation(CossistantAnimation.smooth) {
+      if let title = payload.updates.title {
+        conversations[index].title = title
+      }
+      if let status = payload.updates.status {
+        conversations[index].status = status
+      }
+      if let deletedAt = payload.updates.deletedAt {
+        conversations[index].deletedAt = deletedAt
+      }
     }
   }
 }

@@ -189,7 +189,8 @@ public final class CossistantClient {
   // MARK: - Send Message with Attachments
 
   /// Sends a message with text and/or file attachments.
-  /// Uploads all files in parallel, builds parts array, sends as a single message.
+  /// Shows a pending message immediately, uploads files in parallel,
+  /// builds parts array, sends as a single message, then reconciles.
   public func sendMessageWithAttachments(
     text: String,
     attachments: [FileAttachment],
@@ -199,43 +200,72 @@ public final class CossistantClient {
       throw CossistantError.notBootstrapped
     }
 
-    // Upload all files in parallel
-    let uploadedParts: [TimelineItemPart] = try await withThrowingTaskGroup(
-      of: TimelineItemPart.self
-    ) { group in
-      for attachment in attachments {
-        group.addTask {
-          let url = try await self.uploadFile(
-            data: attachment.data,
-            fileName: attachment.fileName,
-            contentType: attachment.contentType,
-            conversationId: conversationId
-          )
-          if attachment.isImage {
-            return .image(ImagePart(
-              url: url, mediaType: attachment.contentType,
-              filename: attachment.fileName, size: attachment.fileSizeBytes
-            ))
-          } else {
-            return .file(FilePart(
-              url: url, mediaType: attachment.contentType,
-              filename: attachment.fileName, size: attachment.fileSizeBytes
-            ))
+    // 1. Show pending message immediately (before uploads start)
+    let localId = "pending_\(UUID().uuidString)"
+    let pending = PendingMessage(
+      id: localId,
+      conversationId: conversationId,
+      text: text,
+      attachments: attachments,
+      createdAt: Date(),
+      status: .sending
+    )
+    timeline.appendPending(pending)
+
+    do {
+      // 2. Upload all files in parallel
+      let uploadedParts: [TimelineItemPart] = try await withThrowingTaskGroup(
+        of: TimelineItemPart.self
+      ) { group in
+        for attachment in attachments {
+          group.addTask {
+            let url = try await self.uploadFile(
+              data: attachment.data,
+              fileName: attachment.fileName,
+              contentType: attachment.contentType,
+              conversationId: conversationId
+            )
+            if attachment.isImage {
+              return .image(ImagePart(
+                url: url, mediaType: attachment.contentType,
+                filename: attachment.fileName, size: attachment.fileSizeBytes
+              ))
+            } else {
+              return .file(FilePart(
+                url: url, mediaType: attachment.contentType,
+                filename: attachment.fileName, size: attachment.fileSizeBytes
+              ))
+            }
           }
         }
+        var parts: [TimelineItemPart] = []
+        for try await part in group { parts.append(part) }
+        return parts
       }
-      var parts: [TimelineItemPart] = []
-      for try await part in group { parts.append(part) }
-      return parts
+
+      // 3. Build parts: always include a text part (API requires text field)
+      var allParts: [TimelineItemPart] = [.text(TextPart(text: text))]
+      allParts.append(contentsOf: uploadedParts)
+
+      // 4. Send via API
+      let request = SendMessageRequest(
+        conversationId: conversationId,
+        text: text,
+        parts: allParts,
+        visitorId: visitorId
+      )
+      let response: SendMessageResponse = try await rest.request(
+        .sendMessage, body: request
+      )
+
+      // 5. Reconcile: remove pending, add confirmed item
+      timeline.removePending(id: localId)
+      timeline.appendItemIfNew(response.item)
+    } catch {
+      // 6. Mark pending as failed so UI shows retry
+      timeline.markPendingFailed(id: localId, error: error.localizedDescription)
+      throw error
     }
-
-    // Build parts: always include a text part (API requires text field)
-    var allParts: [TimelineItemPart] = [.text(TextPart(text: text))]
-    allParts.append(contentsOf: uploadedParts)
-
-    try await timeline.sendMessageWithParts(
-      text: text, parts: allParts, attachments: attachments, visitorId: visitorId
-    )
   }
 
   // MARK: - Activity Tracking

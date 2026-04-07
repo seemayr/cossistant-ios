@@ -16,11 +16,15 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/SFSafeSymbols/SFSafeSymbols.git", from: "5.3.0"),
+    .package(url: "https://github.com/yaslab/ULID.swift.git", from: "1.3.0"),
   ],
   targets: [
     .target(
       name: "Cossistant",
-      dependencies: ["SFSafeSymbols"],
+      dependencies: [
+        "SFSafeSymbols",
+        .product(name: "ULID", package: "ulid.swift"),
+      ],
       resources: [.process("Resources")]
     ),
     .testTarget(

@@ -209,9 +209,11 @@ The package uses Swift 6.2 strict concurrency. Common issues to watch for:
 
 ## Localization
 
+Full localization guide: [`.claude/LOCALIZATION_SYSTEM.md`](.claude/LOCALIZATION_SYSTEM.md)
+
 Uses the RString pattern (same as PlayUs). All user-facing strings are localized via `R.string(.key)`.
 
-**Supported languages:** English (en), German (de)
+**Supported languages:** English (en), German (de), Spanish (es), French (fr), Italian (it)
 
 **Files:**
 - `Sources/Cossistant/R.swift` — `R.string(.key)` accessor + `RString` enum
@@ -222,7 +224,7 @@ Uses the RString pattern (same as PlayUs). All user-facing strings are localized
 - Key names describe WHERE/HOW used (not WHAT they say): `error_connection` not `connection_error_text`
 - `%@` for parameters: `R.string(.typing_indicator, agentName)`
 - Add a `comment` to every key in xcstrings explaining context
-- When adding new strings, add BOTH en and de translations
+- When adding new strings, add translations for ALL supported languages
 - R.swift lives outside `Resources/` (SPM treats Resources as non-source)
 
 ## Environment

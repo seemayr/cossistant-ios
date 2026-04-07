@@ -134,55 +134,29 @@ public final class TimelineStore {
     }
   }
 
-  /// Sends a message with pre-built parts (used by CossistantClient for file attachments).
-  public func sendMessageWithParts(
-    text: String,
-    parts: [TimelineItemPart],
-    attachments: [FileAttachment],
-    visitorId: String?
-  ) async throws {
-    guard let conversationId = activeConversationId else {
-      SupportLogger.storeError("Timeline", action: "sendMessageWithParts", error: CossistantError.notBootstrapped)
-      throw CossistantError.notBootstrapped
+  // MARK: - Pending Message Helpers (used by CossistantClient)
+
+  /// Adds a pending message for immediate UI display.
+  public func appendPending(_ message: PendingMessage) {
+    pendingMessages.append(message)
+  }
+
+  /// Removes a pending message after server confirmation.
+  public func removePending(id: String) {
+    pendingMessages.removeAll { $0.id == id }
+  }
+
+  /// Marks a pending message as failed so the UI can show retry.
+  public func markPendingFailed(id: String, error: String) {
+    if let index = pendingMessages.firstIndex(where: { $0.id == id }) {
+      pendingMessages[index].status = .failed(error)
     }
+  }
 
-    SupportLogger.storeAction("Timeline", action: "sendMessageWithParts to \(conversationId)")
-
-    let localId = "pending_\(UUID().uuidString)"
-    let pending = PendingMessage(
-      id: localId,
-      conversationId: conversationId,
-      text: text,
-      attachments: attachments,
-      createdAt: Date(),
-      status: .sending
-    )
-    pendingMessages.append(pending)
-
-    do {
-      let request = SendMessageRequest(
-        conversationId: conversationId,
-        text: text,
-        parts: parts,
-        visitorId: visitorId
-      )
-      let response: SendMessageResponse = try await rest.request(
-        .sendMessage, body: request
-      )
-
-      SupportLogger.storeAction("Timeline", action: "sendMessageWithParts OK — item id: \(response.item.id ?? "nil")")
-
-      pendingMessages.removeAll { $0.id == localId }
-      if !items.contains(where: { $0.id == response.item.id }) {
-        items.append(response.item)
-      }
-    } catch {
-      SupportLogger.storeError("Timeline", action: "sendMessageWithParts", error: error)
-      if let index = pendingMessages.firstIndex(where: { $0.id == localId }) {
-        pendingMessages[index].status = .failed(error.localizedDescription)
-      }
-      throw error
-    }
+  /// Appends a timeline item if not already present (dedup).
+  public func appendItemIfNew(_ item: TimelineItem) {
+    guard !items.contains(where: { $0.id == item.id }) else { return }
+    items.append(item)
   }
 
   /// Retries sending a failed pending message.

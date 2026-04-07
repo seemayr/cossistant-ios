@@ -11,7 +11,7 @@ A community-driven native Swift SDK for integrating [Cossistant](https://cossist
 
 - Swift 6.2+
 - iOS 17+ / macOS 14+
-- One dependency: [SFSafeSymbols](https://github.com/SFSafeSymbols/SFSafeSymbols)
+- Dependencies: [SFSafeSymbols](https://github.com/SFSafeSymbols/SFSafeSymbols), [ULID.swift](https://github.com/yaslab/ULID.swift)
 
 ## Installation
 
@@ -19,7 +19,7 @@ Add the package via Swift Package Manager:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/cossistant/cossistant-swift.git", from: "0.1.0")
+  .package(url: "https://github.com/seemayr/cossistant-ios.git", from: "0.1.0")
 ]
 ```
 
@@ -39,10 +39,16 @@ let client = CossistantClient(
 )
 
 // 2. Show the support view (push into an existing NavigationStack)
-NavigationStack {
-  SupportView(client: client)
-}
+SupportView(client: client)
 ```
+
+If the parent view does not already provide a `NavigationStack`, use `SupportNavigationView` instead — it wraps `SupportView` with its own navigation container:
+
+```swift
+SupportNavigationView(client: client, onDismiss: { dismiss() })
+```
+
+> **Note:** Both `SupportView` and `SupportNavigationView` call `bootstrap()` automatically — no manual setup needed. The `client.bootstrap()` method in the [API section](#cossistantclient) below is for programmatic usage without the built-in views.
 
 ### Auto-Create with Context
 
@@ -81,17 +87,17 @@ SupportView(
 - Visitor identification and metadata
 - Conversation ratings
 - Activity tracking (heartbeat, focus)
-- Localized UI (English, German)
+- Localized UI (English, German, Spanish, French, Italian)
 - Full strict concurrency support (Swift 6)
 
 ## API
 
 ### CossistantClient
 
-The main entry point. All methods are `async throws`.
+The main entry point. All methods are `async throws`. When using `SupportView` or `SupportNavigationView`, bootstrap is called automatically. These methods are for programmatic usage without the built-in views.
 
 ```swift
-// Bootstrap — call once before using the SDK
+// Bootstrap — required before calling other methods (views handle this automatically)
 try await client.bootstrap()
 
 // Identify visitor (link to a contact)
@@ -125,6 +131,16 @@ All stores are `@Observable` and `@MainActor`-isolated for direct use in SwiftUI
 | `client.timeline` | `items`, `visibleItems`, `pendingMessages` | `sendMessage(...)`, `markSeen(...)`, `submitRating(...)` |
 | `client.connection` | `isConnected`, `typingIndicators`, `aiProcessing` | `isAgentTyping(...)`, `aiStatusMessage(...)` |
 | `client.agents` | — | `agent(forUserId:)`, `agent(forAIAgentId:)`, `sender(for:)` |
+
+## Supported Languages
+
+| | Language | Code |
+|---|----------|------|
+| 🇬🇧 | English | `en` |
+| 🇩🇪 | German | `de` |
+| 🇪🇸 | Spanish | `es` |
+| 🇫🇷 | French | `fr` |
+| 🇮🇹 | Italian | `it` |
 
 ## License
 
