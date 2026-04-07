@@ -137,15 +137,19 @@ public struct ChatView: View {
             .buttonStyle(HapticButtonStyle())
           }
 
-          ForEach(groupedItems, id: \.item.id) { entry in
-            MessageBubbleView(
-              item: entry.item,
-              visitorId: visitorId,
-              agents: agents,
-              isGrouped: entry.isGrouped
-            )
-            .id(entry.item.id)
-            .padding(.top, entry.isGrouped ? 4 : 12)
+          ForEach(timeline.itemGroups) { group in
+            VStack(spacing: 4) {
+              ForEach(Array(group.items.enumerated()), id: \.element.id) { index, item in
+                MessageBubbleView(
+                  item: item,
+                  visitorId: visitorId,
+                  agents: agents,
+                  isGrouped: index > 0
+                )
+                .id(item.id)
+              }
+            }
+            .padding(.top, 12)
             .transition(.slideUpFade)
           }
 
@@ -358,88 +362,6 @@ public struct ChatView: View {
   private var canSend: Bool {
     let hasText = !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     return isReady && (hasText || !attachments.isEmpty) && !isSending
-  }
-
-  // MARK: - Message Grouping
-
-  private var groupedItems: [(item: TimelineItem, isGrouped: Bool)] {
-    timeline.visibleItems.enumerated().map { index, item in
-      (item: item, isGrouped: isGroupedWithPrevious(index: index))
-    }
-  }
-
-  /// Five-minute threshold for grouping consecutive messages from the same sender.
-  private static let groupingInterval: TimeInterval = 300
-
-  private func isGroupedWithPrevious(index: Int) -> Bool {
-    let items = timeline.visibleItems
-    guard index > 0 else {
-      logGrouping(index: index, result: false, reason: "first item")
-      return false
-    }
-    let current = items[index]
-
-    // Tool grouping: consecutive tools cluster together
-    if current.type == .tool {
-      let previous = items[index - 1]
-      let result = previous.type == .tool
-      logGrouping(index: index, result: result, reason: result ? "consecutive tools" : "tool after non-tool")
-      return result
-    }
-
-    guard current.type == .message else {
-      logGrouping(index: index, result: false, reason: "type=\(current.type) (not message)")
-      return false
-    }
-
-    // Find the previous message, skipping events/tools in between
-    guard let previous = items[..<index].last(where: { $0.type == .message }) else {
-      logGrouping(index: index, result: false, reason: "no previous message found")
-      return false
-    }
-
-    // Same sender?
-    guard sameSender(current, previous) else {
-      logGrouping(index: index, result: false, reason: "different sender — current: \(senderDescription(current)), previous: \(senderDescription(previous))")
-      return false
-    }
-
-    // Within time threshold?
-    guard let currentDate = SupportFormatters.parseISO8601( current.createdAt),
-      let previousDate = SupportFormatters.parseISO8601( previous.createdAt) else {
-      logGrouping(index: index, result: false, reason: "date parse failed — current: \"\(current.createdAt)\", previous: \"\(previous.createdAt)\"")
-      return false
-    }
-    let delta = currentDate.timeIntervalSince(previousDate)
-    let withinThreshold = delta < Self.groupingInterval
-    logGrouping(index: index, result: withinThreshold, reason: withinThreshold
-      ? "same sender, \(Int(delta))s apart (< \(Int(Self.groupingInterval))s)"
-      : "same sender but \(Int(delta))s apart (>= \(Int(Self.groupingInterval))s threshold)")
-    return withinThreshold
-  }
-
-  private func sameSender(_ a: TimelineItem, _ b: TimelineItem) -> Bool {
-    if let av = a.visitorId, let bv = b.visitorId, av == bv { return true }
-    if let au = a.userId, let bu = b.userId, au == bu { return true }
-    if let aa = a.aiAgentId, let ba = b.aiAgentId, aa == ba { return true }
-    return false
-  }
-
-  // MARK: - Grouping Debug
-
-  private func senderDescription(_ item: TimelineItem) -> String {
-    var parts: [String] = []
-    if let v = item.visitorId { parts.append("visitor=\(v)") }
-    if let u = item.userId { parts.append("user=\(u)") }
-    if let a = item.aiAgentId { parts.append("ai=\(a)") }
-    if parts.isEmpty { parts.append("no sender IDs") }
-    return "[\(parts.joined(separator: ", "))]"
-  }
-
-  private func logGrouping(index: Int, result: Bool, reason: String) {
-    let items = timeline.visibleItems
-    let item = items[index]
-    let text = (item.text ?? "").prefix(30)
   }
 
   // MARK: - Actions

@@ -6,29 +6,21 @@ import Observation
 @Observable
 public final class TimelineStore {
   /// Timeline items for the currently active conversation, oldest first.
-  public private(set) var items: [TimelineItem] = []
+  public private(set) var items: [TimelineItem] = [] {
+    didSet { rebuildDerivedState() }
+  }
 
   /// Widget-visible tool names — only these tools are shown to visitors.
   /// Matches web widget's `TOOL_WIDGET_ACTIVITY_REGISTRY`.
   private static let widgetVisibleTools: Set<String> = ["searchKnowledgeBase"]
 
-  /// Items filtered for visitor display.
+  /// Items filtered for visitor display (cached).
   /// Matches the web widget's `isBlockedTimelineEventForVisitor` + tool registry.
-  public var visibleItems: [TimelineItem] {
-    items.filter { item in
-      guard item.visibility == .public else { return false }
-      if item.type == .identification { return false }
-      if item.type == .tool {
-        // Only show widget-registered tools
-        let toolName = item.tool ?? item.parts.compactMap { part -> String? in
-          if case .tool(let t) = part { return t.toolName }
-          return nil
-        }.first
-        return toolName.map { Self.widgetVisibleTools.contains($0) } ?? false
-      }
-      return true
-    }
-  }
+  public private(set) var visibleItems: [TimelineItem] = []
+
+  /// Grouped items for display — consecutive messages from the same sender
+  /// within 5 minutes are bundled, as are consecutive tool calls.
+  public private(set) var itemGroups: [ItemGroup] = []
 
   /// Pending messages awaiting server confirmation.
   public private(set) var pendingMessages: [PendingMessage] = []
@@ -228,4 +220,92 @@ public final class TimelineStore {
     guard let index = items.firstIndex(where: { $0.id == payload.item.id }) else { return }
     items[index] = payload.item
   }
+
+  // MARK: - Derived State
+
+  /// Five-minute threshold for grouping consecutive messages from the same sender.
+  private static let groupingInterval: TimeInterval = 300
+
+  /// Rebuilds cached `visibleItems` and `itemGroups` from raw `items`.
+  /// Called automatically via `items.didSet`.
+  private func rebuildDerivedState() {
+    visibleItems = items.filter { item in
+      guard item.visibility == .public else { return false }
+      if item.type == .identification { return false }
+      if item.type == .tool {
+        let toolName = item.tool ?? item.parts.compactMap { part -> String? in
+          if case .tool(let t) = part { return t.toolName }
+          return nil
+        }.first
+        return toolName.map { Self.widgetVisibleTools.contains($0) } ?? false
+      }
+      return true
+    }
+
+    // Single forward pass to build groups.
+    var groups: [ItemGroup] = []
+    var currentItems: [TimelineItem] = []
+
+    for item in visibleItems {
+      if let previous = currentItems.last, Self.shouldGroup(item, withPrevious: previous) {
+        currentItems.append(item)
+      } else {
+        if !currentItems.isEmpty {
+          groups.append(ItemGroup(items: currentItems))
+        }
+        currentItems = [item]
+      }
+    }
+    if !currentItems.isEmpty {
+      groups.append(ItemGroup(items: currentItems))
+    }
+
+    itemGroups = groups
+  }
+
+  /// Determines whether `current` should join the same group as `previous`.
+  private static func shouldGroup(_ current: TimelineItem, withPrevious previous: TimelineItem) -> Bool {
+    // Consecutive tools cluster together.
+    if current.type == .tool && previous.type == .tool {
+      return true
+    }
+
+    // Only group messages with messages.
+    guard current.type == .message && previous.type == .message else {
+      return false
+    }
+
+    // Same sender?
+    guard sameSender(current, previous) else { return false }
+
+    // Within time threshold?
+    guard let currentDate = SupportFormatters.parseISO8601(current.createdAt),
+          let previousDate = SupportFormatters.parseISO8601(previous.createdAt) else {
+      return false
+    }
+    return currentDate.timeIntervalSince(previousDate) < groupingInterval
+  }
+
+  private static func sameSender(_ a: TimelineItem, _ b: TimelineItem) -> Bool {
+    if let av = a.visitorId, let bv = b.visitorId, av == bv { return true }
+    if let au = a.userId, let bu = b.userId, au == bu { return true }
+    if let aa = a.aiAgentId, let ba = b.aiAgentId, aa == ba { return true }
+    return false
+  }
+}
+
+// MARK: - Item Group
+
+/// A group of consecutive timeline items that belong together visually.
+/// Messages from the same sender within 5 minutes, or consecutive tool calls.
+public struct ItemGroup: Identifiable, Sendable {
+  /// Stable identity — uses the first item's ID.
+  /// Falls back to createdAt to avoid generating a new UUID on every access.
+  public var id: String { items[0].id ?? items[0].createdAt }
+
+  /// The items in this group, in chronological order. Always non-empty.
+  public let items: [TimelineItem]
+
+  /// The last item's ID — useful for scroll-to-bottom targeting.
+  public var lastItemId: String? { items.last?.id }
 }
