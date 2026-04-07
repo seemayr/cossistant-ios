@@ -40,6 +40,16 @@ gh api repos/cossistantcom/cossistant/contents/packages/react/src --jq '.[].name
 
 When modifying models or adding endpoints, **always read the upstream TypeScript types first** to ensure field names, optionality, and enums match exactly.
 
+## README
+
+The `README.md` is the public-facing documentation for SDK consumers. **Keep it up to date** when making changes that affect the public API:
+
+- Adding/removing/renaming public methods on `CossistantClient` → update the API section
+- Adding new features or capabilities → update the Features list
+- Changing `Configuration` parameters → update the Configuration table
+- Adding/changing observable store properties or methods → update the Observable Stores table
+- Changing requirements (Swift version, platform minimums, dependencies) → update Requirements and Installation
+
 ## API Overview
 
 - **REST:** `https://api.cossistant.com/v1` — ~11 endpoints (see `Network/Endpoint.swift`)
@@ -217,7 +227,7 @@ Uses the RString pattern (same as PlayUs). All user-facing strings are localized
 
 ## Environment
 
-- **Test API key:** defined in `TestFixtures.testAPIKey` (pk_test_...)
-- **Test origin:** `http://localhost:3000` (accepted by test keys)
+- **Test API key:** set `COSSISTANT_TEST_API_KEY` env var (required for integration tests; mock tests use a placeholder)
+- **Test origin:** set `COSSISTANT_TEST_ORIGIN` env var (defaults to `http://localhost:3000`)
 - **Swift version:** 6.2 (strict concurrency mode)
 - **Minimum deployment:** iOS 17, macOS 14

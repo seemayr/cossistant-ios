@@ -17,7 +17,7 @@ struct AgentRegistryTests {
     let registry = try makePopulatedRegistry()
     let agent = registry.agent(forUserId: "01KN8XRQMTFXECQVN4NDNJWCGY")
     #expect(agent != nil)
-    #expect(agent?.name == "Askus Support")
+    #expect(agent?.name == "Test Agent")
     #expect(agent?.kind == .human)
     #expect(agent?.image != nil)
   }
@@ -49,7 +49,7 @@ struct AgentRegistryTests {
       visitorId: nil, createdAt: "2026-04-06T10:00:00Z", deletedAt: nil
     )
     let sender = registry.sender(for: item)
-    #expect(sender?.name == "Askus Support")
+    #expect(sender?.name == "Test Agent")
   }
 
   @Test("sender(for:) returns nil for visitor messages")

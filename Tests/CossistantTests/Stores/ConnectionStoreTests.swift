@@ -40,7 +40,7 @@ struct ConnectionStoreTests {
       conversationId: "conv_001", isTyping: true, visitorPreview: nil,
       userId: "01KN8XRQMTFXECQVN4NDNJWCGY", aiAgentId: nil
     ))
-    #expect(store.typingIndicators["conv_001"]?.name == "Askus Support")
+    #expect(store.typingIndicators["conv_001"]?.name == "Test Agent")
   }
 
   @Test("AI processing state set and cleared")
@@ -58,10 +58,10 @@ struct ConnectionStoreTests {
       conversationId: "conv_001", aiAgentId: "ai_001",
       status: "success", reason: nil, audience: "all"
     ))
-    // On success, shows "done" state briefly before auto-clearing
-    #expect(store.aiProcessing["conv_001"]?.phase == "done")
+    // Completion removes the processing state immediately
+    #expect(store.aiProcessing["conv_001"] == nil)
 
-    // Non-success clears immediately
+    // Error status also clears immediately
     store.handleAIProgress(AIProcessingProgressPayload(
       conversationId: "conv_002", aiAgentId: "ai_001",
       phase: "thinking", message: nil, audience: "all"

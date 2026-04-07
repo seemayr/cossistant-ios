@@ -49,6 +49,7 @@ struct TimelineStoreEventTests {
       id: "pending_1",
       conversationId: "conv_001",
       text: "Hello",
+      attachments: [],
       createdAt: Date(),
       status: .sending
     )

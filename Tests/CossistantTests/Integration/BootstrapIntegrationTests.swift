@@ -16,7 +16,7 @@ struct BootstrapIntegrationTests {
     let rest = RESTClient(configuration: configuration)
     let response: PublicWebsiteResponse = try await rest.request(.getWebsite)
 
-    #expect(response.name == "help.playus.club")
+    #expect(!response.name.isEmpty)
     #expect(!response.visitor.id.isEmpty)
     #expect(response.visitor.isBlocked == false)
     #expect(response.status == "active")
@@ -50,7 +50,7 @@ struct BootstrapIntegrationTests {
       visitorId: website.visitor.id,
       externalId: "swift-sdk-test",
       name: "SDK Integration Test",
-      email: "test@playus.club",
+      email: "test@example.com",
       metadata: VisitorMetadata([
         "appVersion": .string("1.0.0"),
         "device": .string("Mac (test runner)"),
@@ -62,7 +62,7 @@ struct BootstrapIntegrationTests {
       .identifyContact, body: identifyRequest
     )
     #expect(identifyResponse.contact.name == "SDK Integration Test")
-    #expect(identifyResponse.contact.email == "test@playus.club")
+    #expect(identifyResponse.contact.email == "test@example.com")
     #expect(identifyResponse.visitorId == website.visitor.id)
 
     // 3. Create conversation

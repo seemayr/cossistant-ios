@@ -64,6 +64,6 @@ struct EndpointTests {
     #expect(Endpoint.submitRating(conversationId: "c3").path == "/conversations/c3/rating")
     #expect(Endpoint.updateVisitorMetadata(visitorId: "v1").path == "/visitors/v1/metadata")
     #expect(Endpoint.visitorActivity.path == "/visitors/activity")
-    #expect(Endpoint.generateUploadURL.path == "/upload/generate-url")
+    #expect(Endpoint.generateUploadURL.path == "/uploads/sign-url")
   }
 }

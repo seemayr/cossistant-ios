@@ -2,14 +2,15 @@ import Foundation
 
 /// JSON fixtures matching real Cossistant API responses.
 enum TestFixtures {
-  static let testAPIKey = "pk_test_584b4b6d7220ee2e1b83cbfb965bc9507347feccf2a604a3504d27d0930115db"
+  static let testAPIKey = ProcessInfo.processInfo.environment["COSSISTANT_TEST_API_KEY"]
+    ?? "pk_test_placeholder_for_unit_tests"
   static let testOrigin = "http://localhost:3000"
 
   static let websiteResponse = """
   {
     "id": "01KNGRFZ1M977NBY79HWWG6JRY",
-    "name": "help.playus.club",
-    "domain": "help.playus.club",
+    "name": "help.example.com",
+    "domain": "help.example.com",
     "description": null,
     "logoUrl": null,
     "organizationId": "01KN8XRSDSSKN46PCK3SHX5XB5",
@@ -18,7 +19,7 @@ enum TestFixtures {
     "availableHumanAgents": [
       {
         "id": "01KN8XRQMTFXECQVN4NDNJWCGY",
-        "name": "Askus Support",
+        "name": "Test Agent",
         "image": "https://example.com/avatar.png",
         "lastSeenAt": "2026-04-06T08:26:58.928Z"
       }
@@ -341,7 +342,7 @@ enum TestFixtures {
   """.data(using: .utf8)!
 
   static let uploadURLResponse = """
-  { "url": "https://s3.amazonaws.com/bucket/presigned", "fileUrl": "https://cdn.example.com/uploads/file.pdf" }
+  { "uploadUrl": "https://s3.amazonaws.com/bucket/presigned", "publicUrl": "https://cdn.example.com/uploads/file.pdf", "key": "org/site/file.pdf", "bucket": "cossistant-uploads", "expiresAt": "2026-04-06T12:00:00.000Z", "contentType": "application/pdf" }
   """.data(using: .utf8)!
 
   static let activityResponse = """

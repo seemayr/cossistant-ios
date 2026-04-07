@@ -109,7 +109,7 @@ struct MockNetworkTests {
     // We test through the rest client directly since CossistantClient.rest is private
     let response: PublicWebsiteResponse = try await mockRest.request(.getWebsite)
     #expect(response.visitor.id == "01KNGYEKPY4QWWWXTH66QCAS7R")
-    #expect(response.name == "help.playus.club")
+    #expect(response.name == "help.example.com")
     #expect(response.visitor.isBlocked == false)
   }
 
@@ -398,9 +398,15 @@ struct MockNetworkTests {
       (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.uploadURLResponse)
     }
     let rest = RESTClient(configuration: configuration, session: MockURLProtocol.mockSession())
-    let body = GenerateUploadURLRequest(fileName: "test.pdf", contentType: "application/pdf", conversationId: "conv_001")
+    let body = GenerateUploadURLRequest(
+      contentType: "application/pdf",
+      websiteId: "site_001",
+      organizationId: "org_001",
+      conversationId: "conv_001",
+      fileName: "test.pdf"
+    )
     let response: GenerateUploadURLResponse = try await rest.request(.generateUploadURL, body: body)
-    #expect(response.fileUrl == "https://cdn.example.com/uploads/file.pdf")
-    #expect(response.url.contains("s3.amazonaws.com"))
+    #expect(response.publicUrl == "https://cdn.example.com/uploads/file.pdf")
+    #expect(response.uploadUrl.contains("s3.amazonaws.com"))
   }
 }

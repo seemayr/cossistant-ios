@@ -26,10 +26,10 @@ struct ConversationTests {
       PublicWebsiteResponse.self,
       from: TestFixtures.websiteResponse
     )
-    #expect(response.name == "help.playus.club")
+    #expect(response.name == "help.example.com")
     #expect(response.status == "active")
     #expect(response.availableHumanAgents.count == 1)
-    #expect(response.availableHumanAgents[0].name == "Askus Support")
+    #expect(response.availableHumanAgents[0].name == "Test Agent")
     #expect(response.availableAIAgents.isEmpty)
     #expect(response.visitor.id == "01KNGYEKPY4QWWWXTH66QCAS7R")
     #expect(response.visitor.isBlocked == false)
