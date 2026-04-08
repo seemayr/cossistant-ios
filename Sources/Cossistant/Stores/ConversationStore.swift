@@ -120,6 +120,19 @@ public final class ConversationStore {
 
   // MARK: - Convenience for UI
 
+  /// Whether any open conversation has unread messages from agents.
+  /// Ignores conversations where the most recent activity was by the visitor themselves.
+  public var hasUnread: Bool {
+    conversations.contains { conversation in
+      guard shouldDisplay(conversation), conversation.status == .open else { return false }
+      // If the last timeline item was sent by the visitor, it's not "unread"
+      if let last = conversation.lastTimelineItem, last.visitorId != nil,
+         last.userId == nil, last.aiAgentId == nil { return false }
+      guard let lastSeen = conversation.visitorLastSeenAt else { return true }
+      return conversation.updatedAt > lastSeen
+    }
+  }
+
   /// Total number of conversations.
   public var totalCount: Int { conversations.count }
 
@@ -145,6 +158,18 @@ public final class ConversationStore {
     withCossistantAnimation(CossistantAnimation.smooth) {
       conversations.insert(payload.conversation, at: 0)
     }
+  }
+
+  /// Optimistically marks a conversation as seen by the visitor (e.g. after a successful markSeen REST call).
+  func markVisitorSeen(conversationId: String) {
+    guard let index = conversations.firstIndex(where: { $0.id == conversationId }) else { return }
+    conversations[index].visitorLastSeenAt = ISO8601DateFormatter().string(from: Date())
+  }
+
+  func handleConversationSeen(_ payload: ConversationSeenPayload) {
+    guard payload.actorType == "visitor",
+          let index = conversations.firstIndex(where: { $0.id == payload.conversationId }) else { return }
+    conversations[index].visitorLastSeenAt = payload.lastSeenAt
   }
 
   func handleConversationUpdated(_ payload: ConversationUpdatedPayload) {

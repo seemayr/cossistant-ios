@@ -27,6 +27,7 @@ struct MessageBubbleView: View {
   }
   
   var body: some View {
+
     if item.type == .event {
       EventBubbleView(item: item, senderInfo: senderInfo)
     } else if item.type == .tool {

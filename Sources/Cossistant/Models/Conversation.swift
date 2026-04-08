@@ -13,7 +13,7 @@ public struct Conversation: Codable, Sendable, Identifiable {
   public var visitorRating: Int?
   public var visitorRatingAt: String?
   public var deletedAt: String?
-  public let visitorLastSeenAt: String?
+  public var visitorLastSeenAt: String?
   public let lastTimelineItem: TimelineItem?
 }
 

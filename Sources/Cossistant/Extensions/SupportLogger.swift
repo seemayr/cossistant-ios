@@ -159,4 +159,5 @@ enum SupportLogger {
     client.error("\(msg)")
     log("❌ \(msg)")
   }
+
 }

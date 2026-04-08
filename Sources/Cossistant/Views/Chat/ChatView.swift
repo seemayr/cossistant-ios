@@ -76,6 +76,7 @@ public struct ChatView: View {
   }
 
   public var body: some View {
+
     VStack(spacing: 0) {
       messageArea
       
@@ -182,13 +183,14 @@ public struct ChatView: View {
             }
           }
 
-          // Human-note hint for young conversations
+          // Human-note hint — visible until a human agent participates or conversation closes
           if chatState == .ready,
              !timeline.visibleItems.isEmpty,
-             (timeline.visibleItems.count + timeline.pendingMessages.count) < 5 {
+             !isConversationClosed,
+             !timeline.visibleItems.contains(where: { $0.userId != nil && $0.aiAgentId == nil }) {
             Text(R.string(.empty_chat_human_note))
               .font(.subheadline)
-              .foregroundStyle(.secondary)
+              .foregroundStyle(.tertiary)
               .multilineTextAlignment(.center)
               .frame(maxWidth: .infinity)
               .padding(.horizontal, 32)
@@ -390,6 +392,7 @@ public struct ChatView: View {
         // Only mark seen if conversation is still open (archived returns 404)
         if !isConversationClosed {
           try? await timeline.markSeen()
+          conversations.markVisitorSeen(conversationId: conversationId)
         }
         chatState = .ready
       } catch {
@@ -565,6 +568,7 @@ private struct ItemGroupView: View {
   let agents: AgentRegistry
 
   var body: some View {
+
     switch group.kind {
     case .message:
       messageGroup
@@ -693,6 +697,7 @@ private struct TypingBubbleView: View {
   let image: String?
 
   var body: some View {
+
     HStack(spacing: 8) {
       if let image, let url = URL(string: image) {
         AsyncImage(url: url) { img in img.resizable() } placeholder: {
@@ -729,6 +734,7 @@ private struct AIProgressBubbleView: View {
   @Environment(\.cossistantDesign) private var design
 
   var body: some View {
+
     HStack {
       HStack(spacing: 8) {
         AnimatedDotsView(style: .pulse, dotSize: 5, spacing: 3)
@@ -885,7 +891,7 @@ private struct ScrollDownIndicatorModifier: ViewModifier {
           for: Bool.self,
           of: { geo in
             let distanceFromBottom = geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
-            return distanceFromBottom <= 150
+            return distanceFromBottom <= 800
           },
           action: { _, newValue in isNearBottom = newValue }
         )

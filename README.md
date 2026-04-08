@@ -94,6 +94,20 @@ SupportNavigationView(client: client)
 
 Both parameters are optional — pass only what you want to change.
 
+### Reading Design Tokens
+
+Inside your own views you can read the current design tokens from the environment:
+
+```swift
+@Environment(\.cossistantDesign) private var design
+
+var body: some View {
+  Text("Styled text")
+    .foregroundStyle(design.accentColor)
+    .fontDesign(design.fontDesign)
+}
+```
+
 ## Features
 
 - Real-time messaging via WebSocket with automatic reconnection
@@ -111,19 +125,29 @@ Both parameters are optional — pass only what you want to change.
 
 ### CossistantClient
 
-The main entry point. All methods are `async throws`. When using `SupportView` or `SupportNavigationView`, bootstrap is called automatically. These methods are for programmatic usage without the built-in views.
+The main entry point. When using `SupportView` or `SupportNavigationView`, bootstrap is called automatically. These methods are for programmatic usage without the built-in views.
 
 ```swift
 // Bootstrap — required before calling other methods (views handle this automatically)
 try await client.bootstrap()
 
-// Identify visitor (link to a contact)
+// Pre-configure identity (applied automatically during bootstrap)
+client.setIdentity(
+  externalId: "user_123",
+  email: "user@example.com",
+  name: "Jane Doe"
+)
+
+// Or identify after bootstrap
 try await client.identify(
   externalId: "user_123",
   email: "user@example.com",
   name: "Jane Doe",
   metadata: VisitorMetadata(["plan": .string("pro")])
 )
+
+// Clear identity on logout
+client.clearIdentity()
 
 // Update visitor metadata (merge, not replace)
 try await client.updateMetadata(VisitorMetadata([
@@ -144,7 +168,7 @@ All stores are `@Observable` and `@MainActor`-isolated for direct use in SwiftUI
 
 | Store | Key Properties | Key Methods |
 |-------|---------------|-------------|
-| `client.conversations` | `conversations`, `sorted`, `hasMore` | `load()`, `loadMore()`, `create(...)` |
+| `client.conversations` | `conversations`, `sorted`, `hasMore`, `hasUnread` | `load()`, `loadMore()`, `create(...)` |
 | `client.timeline` | `items`, `visibleItems`, `pendingMessages` | `sendMessage(...)`, `markSeen(...)`, `submitRating(...)` |
 | `client.connection` | `isConnected`, `typingIndicators`, `aiProcessing` | `isAgentTyping(...)`, `aiStatusMessage(...)` |
 | `client.agents` | — | `agent(forUserId:)`, `agent(forAIAgentId:)`, `sender(for:)` |

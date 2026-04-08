@@ -20,9 +20,9 @@ enum Endpoint {
     switch self {
     case .getWebsite, .listConversations, .getConversation, .getTimeline:
       return "GET"
-    case .createConversation, .sendMessage, .identifyContact, .generateUploadURL, .visitorActivity:
+    case .createConversation, .sendMessage, .markSeen, .identifyContact, .generateUploadURL, .visitorActivity:
       return "POST"
-    case .markSeen, .setTyping, .updateVisitorMetadata:
+    case .setTyping, .updateVisitorMetadata:
       return "PATCH"
     case .submitRating:
       return "POST"

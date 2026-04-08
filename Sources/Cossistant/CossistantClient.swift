@@ -22,6 +22,7 @@ public final class CossistantClient {
   private let rest: RESTClient
   private let webSocket: WebSocketClient
   private let storage: VisitorStorage
+  private var pendingIdentity: PendingIdentity?
 
   /// Website info returned from bootstrap.
   public private(set) var website: PublicWebsiteResponse?
@@ -67,6 +68,7 @@ public final class CossistantClient {
         case .aiAgentProcessingCompleted(let payload):
           connection.handleAICompleted(payload)
         case .conversationSeen(let payload):
+          conversations.handleConversationSeen(payload)
           connection.handleSeen(payload)
         case .visitorIdentified, .connectionEstablished, .unknown:
           break
@@ -106,11 +108,56 @@ public final class CossistantClient {
 
     SupportLogger.bootstrapSuccess(visitorId: response.visitor.id, websiteId: response.id)
 
+    // Auto-identify if identity was pre-configured via setIdentity()
+    if let identity = pendingIdentity {
+      do {
+        try await identify(
+          externalId: identity.externalId,
+          email: identity.email,
+          name: identity.name,
+          image: identity.image,
+          metadata: identity.metadata
+        )
+      } catch {
+        SupportLogger.identifyFailed(error)
+      }
+    }
+
     // Connect WebSocket
     await webSocket.connect(visitorId: response.visitor.id)
   }
 
-  // MARK: - Identify
+  // MARK: - Identity
+
+  /// Pre-configures visitor identity to be applied automatically during ``bootstrap()``.
+  ///
+  /// Call this any time you know who the user is (e.g. after login). The identity
+  /// is stored locally and sent to the server as part of the next bootstrap.
+  /// If identification fails, bootstrap still succeeds and the failure is logged.
+  ///
+  /// - Parameters:
+  ///   - externalId: Your app's user ID.
+  ///   - email: The user's email address.
+  ///   - name: The user's display name.
+  ///   - image: A URL string pointing to the user's avatar image.
+  ///   - metadata: Additional key-value metadata to attach to the contact.
+  public func setIdentity(
+    externalId: String? = nil,
+    email: String? = nil,
+    name: String? = nil,
+    image: String? = nil,
+    metadata: VisitorMetadata? = nil
+  ) {
+    pendingIdentity = PendingIdentity(
+      externalId: externalId, email: email,
+      name: name, image: image, metadata: metadata
+    )
+  }
+
+  /// Clears any pending identity. Call on logout before creating a new client.
+  public func clearIdentity() {
+    pendingIdentity = nil
+  }
 
   /// Links the current visitor to a contact with metadata.
   public func identify(
@@ -291,4 +338,14 @@ public final class CossistantClient {
   public func disconnect() async {
     await webSocket.disconnect()
   }
+}
+
+// MARK: - Pending Identity
+
+private struct PendingIdentity: Sendable {
+  let externalId: String?
+  let email: String?
+  let name: String?
+  let image: String?
+  let metadata: VisitorMetadata?
 }
