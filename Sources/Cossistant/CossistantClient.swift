@@ -133,14 +133,17 @@ public final class CossistantClient {
       }
     }
 
-    // Flush any queued metadata from updateMetadata() calls before bootstrap
+    // Flush queued metadata in the background (doesn't affect conversation results)
     if let metadata = pendingMetadata {
       pendingMetadata = nil
-      do {
-        let request = UpdateVisitorMetadataRequest(metadata: metadata)
-        try await rest.requestVoid(.updateVisitorMetadata(visitorId: response.visitor.id), body: request)
-      } catch {
-        SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+      let vid = response.visitor.id
+      Task {
+        do {
+          let request = UpdateVisitorMetadataRequest(metadata: metadata)
+          try await rest.requestVoid(.updateVisitorMetadata(visitorId: vid), body: request)
+        } catch {
+          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+        }
       }
     }
 

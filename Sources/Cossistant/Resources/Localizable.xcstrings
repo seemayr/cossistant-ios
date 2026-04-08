@@ -944,31 +944,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hier ist es noch ruhig"
+            "value" : "Hier ist es noch ruhig 💬"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "It's quiet in here"
+            "value" : "It's quiet in here 💬"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aquí todo tranquilo"
+            "value" : "Aquí todo tranquilo 💬"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "C'est calme par ici"
+            "value" : "C'est calme par ici 💬"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tutto tranquillo qui"
+            "value" : "Tutto tranquillo qui 💬"
           }
         }
       }
