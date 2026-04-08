@@ -648,7 +648,7 @@ private struct ChatEmptyIllustration: View {
   private let bubbles: [(text: String, isRight: Bool, delay: Double, drift: CGFloat, rotation: Double, scale: CGFloat)] = [
     ("👋", false, 0.0, -3.5, -2.5, 1.04),
     ("💬", true, 0.15, 4.5, 3, 1.06),
-    ("✨", false, 0.3, -3, -2, 1.03),
+    ("🛟", false, 0.3, -3, -2, 1.03),
   ]
 
   var body: some View {
