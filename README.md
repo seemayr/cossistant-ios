@@ -149,8 +149,8 @@ try await client.identify(
 // Clear identity on logout
 client.clearIdentity()
 
-// Update visitor metadata (merge, not replace)
-try await client.updateMetadata(VisitorMetadata([
+// Update visitor metadata (merge, not replace — works before or after bootstrap)
+client.updateMetadata(VisitorMetadata([
   "lastScreen": .string("settings"),
   "appVersion": .string("2.1.0"),
 ]))

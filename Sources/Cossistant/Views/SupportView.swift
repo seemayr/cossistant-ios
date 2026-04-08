@@ -144,7 +144,7 @@ public struct SupportView: View {
 
         // Attach context metadata to visitor
         if !context.metadata.storage.isEmpty {
-          try? await client.updateMetadata(context.metadata)
+          client.updateMetadata(context.metadata)
         }
       }
     } catch {

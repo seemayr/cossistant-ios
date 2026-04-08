@@ -23,6 +23,7 @@ public final class CossistantClient {
   private let webSocket: WebSocketClient
   private let storage: VisitorStorage
   private var pendingIdentity: PendingIdentity?
+  private var pendingMetadata: VisitorMetadata?
 
   /// Website info returned from bootstrap.
   public private(set) var website: PublicWebsiteResponse?
@@ -123,17 +124,29 @@ public final class CossistantClient {
       }
     }
 
+    // Flush any queued metadata from updateMetadata() calls before bootstrap
+    if let metadata = pendingMetadata {
+      pendingMetadata = nil
+      do {
+        let request = UpdateVisitorMetadataRequest(metadata: metadata)
+        try await rest.requestVoid(.updateVisitorMetadata(visitorId: response.visitor.id), body: request)
+      } catch {
+        SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+      }
+    }
+
     // Connect WebSocket
     await webSocket.connect(visitorId: response.visitor.id)
   }
 
   // MARK: - Identity
 
-  /// Pre-configures visitor identity to be applied automatically during ``bootstrap()``.
+  /// Configures visitor identity. Works regardless of bootstrap state:
+  /// - **Before bootstrap:** stores the identity locally; it is sent automatically during the next ``bootstrap()`` call.
+  /// - **After bootstrap:** sends the identity to the server immediately.
   ///
-  /// Call this any time you know who the user is (e.g. after login). The identity
-  /// is stored locally and sent to the server as part of the next bootstrap.
-  /// If identification fails, bootstrap still succeeds and the failure is logged.
+  /// Safe to call multiple times — the server upserts by `externalId`.
+  /// If the immediate identify call fails, the error is logged but not thrown.
   ///
   /// - Parameters:
   ///   - externalId: Your app's user ID.
@@ -152,11 +165,26 @@ public final class CossistantClient {
       externalId: externalId, email: email,
       name: name, image: image, metadata: metadata
     )
+
+    // If already bootstrapped, identify immediately
+    if visitorId != nil {
+      Task {
+        do {
+          try await identify(
+            externalId: externalId, email: email,
+            name: name, image: image, metadata: metadata
+          )
+        } catch {
+          SupportLogger.identifyFailed(error)
+        }
+      }
+    }
   }
 
-  /// Clears any pending identity. Call on logout before creating a new client.
+  /// Clears any pending identity and queued metadata. Call on logout before creating a new client.
   public func clearIdentity() {
     pendingIdentity = nil
+    pendingMetadata = nil
   }
 
   /// Links the current visitor to a contact with metadata.
@@ -180,11 +208,33 @@ public final class CossistantClient {
     )
   }
 
-  /// Updates the visitor's metadata (merge, not replace).
-  public func updateMetadata(_ metadata: VisitorMetadata) async throws {
-    guard let visitorId else { throw CossistantError.notBootstrapped }
-    let request = UpdateVisitorMetadataRequest(metadata: metadata)
-    try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
+  /// Updates the visitor's metadata (merge, not replace). Works regardless of bootstrap state:
+  /// - **Before bootstrap:** queues metadata locally; flushed automatically during ``bootstrap()``.
+  /// - **After bootstrap:** sends to the server immediately.
+  ///
+  /// Each call merges into the pending metadata — keys from later calls overwrite earlier ones.
+  public func updateMetadata(_ metadata: VisitorMetadata) {
+    // Merge into local pending state
+    if var existing = pendingMetadata {
+      existing.storage.merge(metadata.storage) { _, new in new }
+      pendingMetadata = existing
+    } else {
+      pendingMetadata = metadata
+    }
+
+    // If already bootstrapped, flush immediately
+    if let visitorId {
+      let merged = pendingMetadata!
+      pendingMetadata = nil
+      Task {
+        do {
+          let request = UpdateVisitorMetadataRequest(metadata: merged)
+          try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
+        } catch {
+          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+        }
+      }
+    }
   }
 
   // MARK: - File Upload
