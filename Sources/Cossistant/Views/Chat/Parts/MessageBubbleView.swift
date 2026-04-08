@@ -70,9 +70,10 @@ private struct VisitorBubbleView: View {
               .padding(.vertical, 10)
               .background(.tint)
               .clipShape(.rect(cornerRadius: 16))
+              .contextMenu { MessageContextMenu(text: text) }
               .zIndex(1)
           }
-          
+
           if !item.parts.isEmpty {
             RichPartsView(parts: item.parts, itemText: item.text, isFromVisitor: true)
               .zIndex(1)
@@ -132,6 +133,7 @@ private struct AgentBubbleView: View {
               .padding(.vertical, 10)
               .background(.secondary.opacity(0.12))
               .clipShape(.rect(cornerRadius: 16))
+              .contextMenu { MessageContextMenu(text: text) }
               .zIndex(1)
           }
           
@@ -180,6 +182,7 @@ private struct RichPartsView: View {
             .padding(.vertical, 10)
             .background(isFromVisitor ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(0.12)))
             .clipShape(.rect(cornerRadius: 16))
+            .contextMenu { MessageContextMenu(text: textPart.text) }
         }
       case .image(let img):
         ImagePartView(image: img)
@@ -398,5 +401,26 @@ struct AgentAvatarView: View {
           .fontWeight(.semibold)
           .foregroundStyle(.tint)
       }
+  }
+}
+
+// MARK: - Message Context Menu
+
+/// Context menu actions for text message bubbles.
+private struct MessageContextMenu: View {
+  let text: String
+
+  var body: some View {
+    Button {
+      #if os(iOS)
+      UIPasteboard.general.string = text
+      #elseif os(macOS)
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(text, forType: .string)
+      #endif
+      SupportHaptics.play(.buttonTap)
+    } label: {
+      Label(R.string(.context_copy), systemSymbol: .docOnDoc)
+    }
   }
 }

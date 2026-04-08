@@ -7,6 +7,9 @@ import SFSafeSymbols
 /// It uses `.navigationTitle` and `.toolbar` modifiers that compose with
 /// whatever navigation container the host provides.
 ///
+/// The connection is bootstrapped when the view appears and automatically
+/// disconnected when the view is removed from the hierarchy.
+///
 /// **Pushed into an existing NavigationStack:**
 /// ```swift
 /// SupportView(client: client)
@@ -36,11 +39,10 @@ public struct SupportView: View {
   private let autoCreate: SupportContext?
   private let onDismiss: (() -> Void)?
 
+  @State private var connectionToken = ConnectionToken()
   @State private var isBootstrapped = false
   @State private var bootError: String?
-  @State private var selectedConversation: Conversation?
-  @State private var isCreatingNew = false
-  @State private var activeContext: SupportContext?
+  @State private var chatDestination: ChatDestination?
 
   /// - Parameters:
   ///   - client: The initialized CossistantClient.
@@ -64,30 +66,6 @@ public struct SupportView: View {
         errorView(bootError)
       } else if !isBootstrapped {
         CossLoadingOverlayView(R.string(.connecting))
-      } else if isCreatingNew {
-        ChatView(
-          client: client,
-          timeline: client.timeline,
-          connection: client.connection,
-          conversations: client.conversations,
-          agents: client.agents,
-          visitorId: client.visitorId,
-          conversationId: nil,
-          context: activeContext,
-          onBack: navigateBack
-        )
-      } else if let conversation = selectedConversation {
-        ChatView(
-          client: client,
-          timeline: client.timeline,
-          connection: client.connection,
-          conversations: client.conversations,
-          agents: client.agents,
-          visitorId: client.visitorId,
-          conversationId: conversation.id,
-          context: nil,
-          onBack: navigateBack
-        )
       } else {
         conversationList
       }
@@ -104,11 +82,27 @@ public struct SupportView: View {
         }
       }
     }
-    .task {
-      await bootstrap()
+    .navigationDestination(item: $chatDestination) { destination in
+      ChatView(
+        client: client,
+        timeline: client.timeline,
+        connection: client.connection,
+        conversations: client.conversations,
+        agents: client.agents,
+        visitorId: client.visitorId,
+        conversationId: destination.conversationId,
+        context: destination.context
+      )
     }
-    .onDisappear {
-      Task { await client.disconnect() }
+    .onChange(of: chatDestination) { oldValue, newValue in
+      if oldValue != nil, newValue == nil {
+        // User navigated back from chat — clean up and refresh
+        client.timeline.clear()
+        Task { try? await client.conversations.load() }
+      }
+    }
+    .task {
+      await connect()
     }
   }
 
@@ -123,11 +117,10 @@ public struct SupportView: View {
       visitorId: client.visitorId,
       onSelect: { conversation in
         SupportHaptics.play(.conversationOpened)
-        selectedConversation = conversation
+        chatDestination = .conversation(id: conversation.id)
       },
       onNewConversation: {
-        activeContext = nil
-        isCreatingNew = true
+        chatDestination = .new(context: nil)
       }
     )
     .navigationTitle(R.string(.support_title))
@@ -138,16 +131,16 @@ public struct SupportView: View {
 
   // MARK: - Actions
 
-  private func bootstrap() async {
+  private func connect() async {
+    guard !isBootstrapped else { return }
     do {
-      try await client.bootstrap()
+      try await connectionToken.attach(client)
       try await client.conversations.load()
       isBootstrapped = true
 
       // Auto-create: skip the list and go straight to a new conversation
       if let context = autoCreate {
-        activeContext = context
-        isCreatingNew = true
+        chatDestination = .new(context: context)
 
         // Attach context metadata to visitor
         if !context.metadata.storage.isEmpty {
@@ -159,14 +152,6 @@ public struct SupportView: View {
     }
   }
 
-  private func navigateBack() {
-    selectedConversation = nil
-    isCreatingNew = false
-    activeContext = nil
-    client.timeline.clear()
-    Task { try? await client.conversations.load() }
-  }
-
   private func errorView(_ message: String) -> some View {
     ContentUnavailableView {
       Label(R.string(.error_connection), systemSymbol: .wifiExclamationmark)
@@ -175,14 +160,13 @@ public struct SupportView: View {
     } actions: {
       Button(action: {
         bootError = nil
-        Task { await bootstrap() }
+        Task { await connect() }
       }, label: {
         Label(R.string(.retry), systemSymbol: .arrowClockwise)
           .font(.body)
           .fontWeight(.medium)
       })
       .buttonStyle(HapticButtonStyle(haptic: .retry))
-      
 
       if let email = client.configuration.supportEmail {
         DirectContactButton(email: email)
@@ -191,6 +175,56 @@ public struct SupportView: View {
       }
     }
     .transition(.fadeInScale)
+  }
+}
+
+// MARK: - Connection Token
+
+/// Ties the client connection lifetime to the view's presence in the hierarchy.
+///
+/// `@State` is preserved across NavigationStack push/pop but deallocated when
+/// the view is truly removed from the graph. On deallocation, `deinit` fires
+/// a best-effort disconnect. The server's heartbeat timeout (45s) handles
+/// edge cases where the Task never executes (e.g., app termination).
+private final class ConnectionToken: @unchecked Sendable {
+  // Safety: written once from MainActor (.task), read once from deinit (after
+  // all access ends). SwiftUI's lifecycle guarantees write-before-read ordering.
+  nonisolated(unsafe) private var client: CossistantClient?
+
+  /// Bootstraps the client and stores the reference for lifecycle management.
+  /// Idempotent — safe to call on `.task` re-invocation (e.g., nav back).
+  @MainActor
+  func attach(_ client: CossistantClient) async throws {
+    guard self.client == nil else { return }
+    try await client.bootstrap()
+    self.client = client
+  }
+
+  deinit {
+    guard let client else { return }
+    Task { @MainActor in await client.disconnect() }
+  }
+}
+
+// MARK: - Chat Destination
+
+/// Navigation destination for chat — either an existing conversation or a new one.
+public enum ChatDestination: Hashable {
+  case conversation(id: String)
+  case new(context: SupportContext?)
+
+  var conversationId: String? {
+    switch self {
+    case .conversation(let id): id
+    case .new: nil
+    }
+  }
+
+  var context: SupportContext? {
+    switch self {
+    case .conversation: nil
+    case .new(let context): context
+    }
   }
 }
 
@@ -235,6 +269,7 @@ private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIG
         )
       )
     )
+    .cossistantDesign(CossistantDesign(accentColor: .purple, fontDesign: .rounded))
     .clipShape(.rect(cornerRadius: 16))
   }
   .padding(32)

@@ -65,6 +65,7 @@ The `Origin` header is mandatory — the API rejects requests without it (return
 Sources/Cossistant/
 ├── CossistantClient.swift            — @MainActor entry point: bootstrap(), identify(), disconnect()
 ├── CossistantError.swift             — Unified error enum (http, decoding, ws, network)
+├── CossistantDesign.swift             — Design tokens (accent color, font design) + EnvironmentKey
 ├── Configuration.swift               — apiKey, origin, base URLs
 ├── Network/
 │   ├── RESTClient.swift              — actor, URLSession async/await, headers, error mapping

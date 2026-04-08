@@ -17,6 +17,7 @@ struct CossLoadingView: View {
       cossImage
       Text(message)
         .font(.subheadline)
+        .fontWeight(.medium)
         .foregroundStyle(.secondary)
     }
     .task {

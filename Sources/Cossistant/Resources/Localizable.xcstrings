@@ -8,31 +8,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verarbeitung..."
+            "value" : "Wird bearbeitet..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Processing..."
+            "value" : "Working on it..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Procesando..."
+            "value" : "Trabajando en ello..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Traitement..."
+            "value" : "J'y travaille..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elaborazione..."
+            "value" : "Ci sto lavorando..."
           }
         }
       }
@@ -44,31 +44,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Antwort wird verfasst..."
+            "value" : "Antwort wird geschrieben..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Writing response..."
+            "value" : "Writing a reply..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escribiendo respuesta..."
+            "value" : "Escribiendo una respuesta..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rédaction de la réponse..."
+            "value" : "Rédaction d'une réponse..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scrittura della risposta..."
+            "value" : "Sto scrivendo una risposta..."
           }
         }
       }
@@ -80,31 +80,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wissensdatenbank wird durchsucht..."
+            "value" : "Wird nachgeschlagen..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Searching knowledge base..."
+            "value" : "Looking that up..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscando en la base de conocimiento..."
+            "value" : "Buscando eso..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Recherche dans la base de connaissances..."
+            "value" : "Recherche en cours..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ricerca nella base di conoscenza..."
+            "value" : "Sto cercando..."
           }
         }
       }
@@ -476,31 +476,67 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verbinden..."
+            "value" : "Einen Moment..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connecting..."
+            "value" : "One moment..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Conectando..."
+            "value" : "Un momento..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connexion..."
+            "value" : "Un instant..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connessione..."
+            "value" : "Un momento..."
+          }
+        }
+      }
+    },
+    "context_copy" : {
+      "comment" : "Context menu action to copy message text to clipboard.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia"
           }
         }
       }
@@ -620,31 +656,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unterhaltung wird erstellt..."
+            "value" : "Wir verbinden dich mit dem Team..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Setting up your conversation..."
+            "value" : "Connecting you to the team..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparando tu conversación..."
+            "value" : "Conectándote con el equipo..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Création de votre conversation..."
+            "value" : "Connexion avec l'équipe..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Creazione della conversazione..."
+            "value" : "Ti colleghiamo al team..."
           }
         }
       }
@@ -800,31 +836,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unser Team prüft jede Anfrage und antwortet persönlich, falls nötig."
+            "value" : "Ein echter Mensch liest jede Anfrage und meldet sich bei Bedarf persönlich."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Our team reviews every conversation and will follow up personally if needed."
+            "value" : "A real person reviews every conversation and will reach out if needed."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nuestro equipo revisa cada conversación y responderá personalmente si es necesario."
+            "value" : "Una persona real revisa cada conversación y se comunicará contigo si es necesario."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Notre équipe examine chaque conversation et vous répondra personnellement si nécessaire."
+            "value" : "Une vraie personne examine chaque conversation et vous recontactera si nécessaire."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il nostro team esamina ogni conversazione e risponderà personalmente se necessario."
+            "value" : "Una persona reale esamina ogni conversazione e ti ricontatterà se necessario."
           }
         }
       }
@@ -836,31 +872,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starte die Unterhaltung"
+            "value" : "Wie können wir helfen?"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Start the conversation"
+            "value" : "How can we help?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inicia la conversación"
+            "value" : "¿Cómo podemos ayudarte?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Démarrez la conversation"
+            "value" : "Comment pouvons-nous vous aider ?"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inizia la conversazione"
+            "value" : "Come possiamo aiutarti?"
           }
         }
       }
@@ -908,31 +944,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch keine Chats"
+            "value" : "Hier ist es noch ruhig"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No Conversations yet"
+            "value" : "It's quiet in here"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay conversaciones"
+            "value" : "Aquí todo tranquilo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pas encore de conversations"
+            "value" : "C'est calme par ici"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ancora nessuna conversazione"
+            "value" : "Tutto tranquillo qui"
           }
         }
       }
@@ -1333,6 +1369,42 @@
         }
       }
     },
+    "image_load_failed" : {
+      "comment" : "Label shown in the fullscreen image viewer when the image cannot be loaded.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bild konnte nicht geladen werden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not load image"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo cargar la imagen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de charger l'image"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile caricare l'immagine"
+          }
+        }
+      }
+    },
     "input_placeholder" : {
       "comment" : "Placeholder text inside the message input field.",
       "extractionState" : "manual",
@@ -1340,31 +1412,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nachricht eingeben..."
+            "value" : "Frag uns einfach..."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Type a message..."
+            "value" : "Ask us anything..."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Escribe un mensaje..."
+            "value" : "Pregúntanos lo que sea..."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Écrivez un message..."
+            "value" : "Demandez-nous..."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scrivi un messaggio..."
+            "value" : "Chiedici quello che vuoi..."
           }
         }
       }

@@ -78,12 +78,29 @@ SupportView(
 | `webSocketBaseURL` | No | WebSocket base URL (defaults to `wss://api.cossistant.com/ws`) |
 | `supportEmail` | No | When set, shows a "Direct Contact" button in error views |
 
+## Customization
+
+Customize the visual appearance of the support UI with `CossistantDesign`:
+
+```swift
+SupportNavigationView(client: client)
+  .cossistantDesign(CossistantDesign(accentColor: .purple, fontDesign: .rounded))
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `accentColor` | App's accent color | Color for CTA buttons, visitor message bubbles, and interactive elements |
+| `fontDesign` | `.default` | Font design applied to all text (`.rounded`, `.serif`, `.monospaced`) |
+
+Both parameters are optional — pass only what you want to change.
+
 ## Features
 
 - Real-time messaging via WebSocket with automatic reconnection
 - AI agent support with typing indicators and processing state
 - Conversation list with pagination
-- File and image upload attachments
+- File and image upload attachments with fullscreen image viewer
+- Long-press copy on message bubbles
 - Visitor identification and metadata
 - Conversation ratings
 - Activity tracking (heartbeat, focus)

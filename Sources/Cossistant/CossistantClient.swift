@@ -284,7 +284,10 @@ public final class CossistantClient {
 
   // MARK: - Disconnect
 
-  /// Disconnects the WebSocket. Call when the support UI is dismissed.
+  /// Disconnects the WebSocket.
+  /// Called automatically by `SupportView` when removed from the view hierarchy.
+  /// Can also be called manually if the host needs to disconnect earlier.
+  /// Idempotent — safe to call multiple times.
   public func disconnect() async {
     await webSocket.disconnect()
   }

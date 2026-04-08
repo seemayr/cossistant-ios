@@ -21,7 +21,6 @@ public struct ChatView: View {
   private let visitorId: String?
   private let initialConversationId: String?
   private let context: SupportContext?
-  private let onBack: (() -> Void)?
 
   @State private var chatState: ChatState = .loading
   @State private var activeConversationId: String?
@@ -30,6 +29,8 @@ public struct ChatView: View {
   @State private var attachments: [FileAttachment] = []
   @State private var attachmentError: AttachmentValidationError?
   @State private var itemGroups: [ChatItemGroup] = []
+  @State private var isNearBottom = true
+  @Environment(\.cossistantDesign) private var design
   @FocusState private var isInputFocused: Bool
 
   private var activeConversation: Conversation? {
@@ -62,8 +63,7 @@ public struct ChatView: View {
     agents: AgentRegistry,
     visitorId: String?,
     conversationId: String?,
-    context: SupportContext? = nil,
-    onBack: (() -> Void)? = nil
+    context: SupportContext? = nil
   ) {
     self.client = client
     self.timeline = timeline
@@ -73,7 +73,6 @@ public struct ChatView: View {
     self.visitorId = visitorId
     self.initialConversationId = conversationId
     self.context = context
-    self.onBack = onBack
   }
 
   public var body: some View {
@@ -99,16 +98,6 @@ public struct ChatView: View {
     #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
     #endif
-    .toolbar {
-      if let onBack {
-        ToolbarItem(placement: .cancellationAction) {
-          Button(action: onBack) {
-            Label(R.string(.back), systemSymbol: .chevronLeft)
-              .labelStyle(.iconOnly)
-          }
-        }
-      }
-    }
     .task {
       await setup()
     }
@@ -192,12 +181,39 @@ public struct ChatView: View {
                 .transition(.opacity)
             }
           }
+
+          // Human-note hint for young conversations
+          if chatState == .ready,
+             !timeline.visibleItems.isEmpty,
+             (timeline.visibleItems.count + timeline.pendingMessages.count) < 5 {
+            Text(R.string(.empty_chat_human_note))
+              .font(.subheadline)
+              .foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+              .frame(maxWidth: .infinity)
+              .padding(.horizontal, 32)
+              .padding(.top, 24)
+          }
+
+          // Bottom breathing room + scroll anchor
+          Color.clear
+            .frame(height: 40)
+            .id("chat-bottom-anchor")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
       }
-      .onChange(of: timeline.visibleItems.count) { oldCount, newCount in
+      .scrollDismissesKeyboard(.interactively)
+      .modifier(ScrollDownIndicatorModifier(
+        isNearBottom: $isNearBottom,
+        onScrollDown: { scrollToBottom(proxy: proxy) }
+      ))
+      .onChange(of: chatState) {
+        guard chatState == .ready else { return }
         scrollToBottom(proxy: proxy)
+      }
+      .onChange(of: timeline.visibleItems.count) { oldCount, newCount in
+        if isNearBottom { scrollToBottom(proxy: proxy) }
         // Play haptic for agent messages arriving
         if newCount > oldCount, let last = timeline.visibleItems.last,
           last.visitorId == nil {
@@ -205,7 +221,7 @@ public struct ChatView: View {
         }
       }
       .onChange(of: timeline.pendingMessages.count) {
-        scrollToBottom(proxy: proxy)
+        if isNearBottom { scrollToBottom(proxy: proxy) }
       }
     }
   }
@@ -328,7 +344,7 @@ public struct ChatView: View {
           Label(R.string(.send), systemSymbol: .arrowUpCircleFill)
             .labelStyle(.iconOnly)
             .font(.title)
-            .foregroundStyle(canSend ? Color.accentColor : .secondary.opacity(0.4))
+            .foregroundStyle(canSend ? design.accentColor : .secondary.opacity(0.4))
         }
         .buttonStyle(HapticButtonStyle(haptic: .messageSent))
         .disabled(!canSend)
@@ -425,10 +441,8 @@ public struct ChatView: View {
   }
 
   private func scrollToBottom(proxy: ScrollViewProxy) {
-    let lastId = timeline.pendingMessages.last?.id ?? itemGroups.last?.items.last?.id
-    guard let lastId else { return }
     withCossistantAnimation(.easeOut(duration: 0.2)) {
-      proxy.scrollTo(lastId, anchor: .bottom)
+      proxy.scrollTo("chat-bottom-anchor", anchor: .bottom)
     }
   }
 
@@ -712,6 +726,8 @@ private struct AIProgressBubbleView: View {
   let phase: String?
   let message: String?
 
+  @Environment(\.cossistantDesign) private var design
+
   var body: some View {
     HStack {
       HStack(spacing: 8) {
@@ -723,7 +739,7 @@ private struct AIProgressBubbleView: View {
       }
       .padding(.horizontal, 14)
       .padding(.vertical, 10)
-      .background(Color.accentColor.opacity(0.08))
+      .background(design.accentColor.opacity(0.08))
       .clipShape(.rect(cornerRadius: 16))
       Spacer()
     }
@@ -851,5 +867,59 @@ private struct SeenIndicatorView: View {
       onlineStatus: .offline
     )
     return AgentAvatarView(info: info, size: 18)
+  }
+}
+
+// MARK: - Scroll Down Indicator
+
+private struct ScrollDownIndicatorModifier: ViewModifier {
+  @Binding var isNearBottom: Bool
+  let onScrollDown: () -> Void
+
+  @State private var chevronBob = false
+
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, macOS 15.0, *) {
+      content
+        .onScrollGeometryChange(
+          for: Bool.self,
+          of: { geo in
+            let distanceFromBottom = geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
+            return distanceFromBottom <= 150
+          },
+          action: { _, newValue in isNearBottom = newValue }
+        )
+        .overlay(alignment: .bottomTrailing) {
+          scrollDownButton
+        }
+    } else {
+      content
+    }
+  }
+
+  private var scrollDownButton: some View {
+    Button(action: onScrollDown) {
+      Image(systemSymbol: .arrowDown)
+        .font(.system(size: 15, weight: .bold, design: .rounded))
+        .foregroundStyle(.primary)
+        .offset(y: chevronBob ? 2 : -1)
+        .frame(width: 36, height: 36)
+        .background(.regularMaterial)
+        .clipShape(.circle)
+        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+        .scaleEffect(chevronBob ? 1 : 0.95)
+    }
+    .buttonStyle(HapticButtonStyle())
+    .padding(.trailing, 16)
+    .padding(.bottom, 8)
+    .opacity(isNearBottom ? 0 : 1)
+    .offset(y: isNearBottom ? 20 : 0)
+    .animation(.easeInOut(duration: 0.25), value: isNearBottom)
+    .allowsHitTesting(!isNearBottom)
+    .onAppear {
+      withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+        chevronBob = true
+      }
+    }
   }
 }

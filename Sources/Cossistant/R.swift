@@ -76,6 +76,12 @@ enum R {
     case file_default_name
     case image_accessibility
 
+    // MARK: - Context Menu
+    case context_copy
+
+    // MARK: - Image Viewer
+    case image_load_failed
+
     // MARK: - Attachments
     case attachment_photo_library
     case attachment_choose_file

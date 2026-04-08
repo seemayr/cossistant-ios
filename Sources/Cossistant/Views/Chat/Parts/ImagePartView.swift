@@ -1,10 +1,16 @@
 import SwiftUI
 import SFSafeSymbols
 
+extension URL: @retroactive Identifiable {
+  public var id: String { absoluteString }
+}
+
 /// Image attachment with smooth placeholder-to-loaded transition.
+/// Tap to view fullscreen.
 struct ImagePartView: View {
   let image: ImagePart
   @State private var isLoaded = false
+  @State private var viewerURL: URL?
 
   var body: some View {
     AsyncImage(url: URL(string: image.url)) { phase in
@@ -30,7 +36,18 @@ struct ImagePartView: View {
     }
     .frame(maxWidth: 220, maxHeight: 180)
     .clipShape(.rect(cornerRadius: 12))
+    .contentShape(.rect(cornerRadius: 12))
     .accessibilityLabel(image.filename ?? R.string(.image_accessibility))
+    .onTapGesture { viewerURL = URL(string: image.url) }
+    #if os(iOS)
+    .fullScreenCover(item: $viewerURL) { url in
+      ImageViewerView(url: url, filename: image.filename)
+    }
+    #else
+    .sheet(item: $viewerURL) { url in
+      ImageViewerView(url: url, filename: image.filename)
+    }
+    #endif
   }
 
   private var placeholder: some View {

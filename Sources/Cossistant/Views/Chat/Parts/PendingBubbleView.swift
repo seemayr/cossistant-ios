@@ -6,6 +6,8 @@ struct PendingBubbleView: View {
   let onRetry: (() -> Void)?
   let onDiscard: (() -> Void)?
 
+  @Environment(\.cossistantDesign) private var design
+
   init(
     message: PendingMessage,
     onRetry: (() -> Void)? = nil,
@@ -27,7 +29,7 @@ struct PendingBubbleView: View {
             .foregroundStyle(.white.opacity(isFailed ? 0.7 : 0.9))
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(isFailed ? Color.red.opacity(0.7) : Color.accentColor.opacity(0.6))
+            .background(isFailed ? Color.red.opacity(0.7) : design.accentColor.opacity(0.6))
             .clipShape(.rect(cornerRadius: 16))
             .animation(CossistantAnimation.quick, value: isFailed)
         }

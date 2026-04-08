@@ -13,18 +13,21 @@ struct AnimatedDotsView: View {
   }
 
   let style: Style
-  var color: Color = .accentColor
+  var color: Color?
   var dotSize: CGFloat = 6
   var spacing: CGFloat = 4
 
+  @Environment(\.cossistantDesign) private var design
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var isAnimating = false
+
+  private var resolvedColor: Color { color ?? design.accentColor }
 
   var body: some View {
     HStack(spacing: spacing) {
       ForEach(0..<3, id: \.self) { index in
         Circle()
-          .fill(color)
+          .fill(resolvedColor)
           .frame(width: dotSize, height: dotSize)
           .modifier(DotAnimationModifier(
             style: style,
