@@ -46,13 +46,13 @@ struct EndpointTests {
     #expect(Endpoint.identifyContact.method == "POST")
     #expect(Endpoint.submitRating(conversationId: "x").method == "POST")
     #expect(Endpoint.markSeen(conversationId: "x").method == "POST")
+    #expect(Endpoint.setTyping(conversationId: "x").method == "POST")
     #expect(Endpoint.generateUploadURL.method == "POST")
     #expect(Endpoint.visitorActivity.method == "POST")
   }
 
   @Test("PATCH endpoints")
   func patchEndpoints() {
-    #expect(Endpoint.setTyping(conversationId: "x").method == "PATCH")
     #expect(Endpoint.updateVisitorMetadata(visitorId: "v1").method == "PATCH")
   }
 

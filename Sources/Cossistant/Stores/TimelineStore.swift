@@ -177,7 +177,7 @@ public final class TimelineStore {
   /// Marks the active conversation as seen.
   public func markSeen() async throws {
     guard let conversationId = activeConversationId else { return }
-    let _: MarkSeenResponse = try await rest.request(.markSeen(conversationId: conversationId))
+    let _: MarkSeenResponse = try await rest.request(.markSeen(conversationId: conversationId), body: [String: String]())
   }
 
   /// Sends typing indicator.
