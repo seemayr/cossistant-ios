@@ -45,9 +45,16 @@ public struct ConversationUpdates: Codable, Sendable {
   public let deletedAt: String?
 }
 
+/// The type of actor performing an action (seen, typing, etc.).
+public enum ActorType: String, Codable, Sendable {
+  case visitor
+  case user
+  case aiAgent = "ai_agent"
+}
+
 public struct ConversationSeenPayload: Codable, Sendable {
   public let conversationId: String
-  public let actorType: String
+  public let actorType: ActorType
   public let actorId: String
   public let lastSeenAt: String
 }

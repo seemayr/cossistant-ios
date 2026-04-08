@@ -159,7 +159,7 @@ public final class ConversationStore {
   }
 
   func handleConversationSeen(_ payload: ConversationSeenPayload) {
-    guard payload.actorType == "visitor",
+    guard payload.actorType == .visitor,
           let index = conversations.firstIndex(where: { $0.id == payload.conversationId }) else { return }
     conversations[index].visitorLastSeenAt = payload.lastSeenAt
   }

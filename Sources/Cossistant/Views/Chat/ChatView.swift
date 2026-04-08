@@ -175,7 +175,7 @@ public struct ChatView: View {
 
           // Read receipts
           if let convId = activeConversationId {
-            let receipts = connection.seen(for: convId)
+            let receipts = connection.seen(for: convId).filter { $0.actorType != .visitor }
             if !receipts.isEmpty {
               SeenIndicatorView(receipts: receipts)
                 .padding(.top, 4)
@@ -869,7 +869,7 @@ private struct SeenIndicatorView: View {
       id: receipt.actorId,
       name: receipt.name ?? "?",
       image: receipt.image,
-      kind: receipt.actorType == "ai_agent" ? .ai : .human,
+      kind: receipt.actorType == .aiAgent ? .ai : .human,
       onlineStatus: .offline
     )
     return AgentAvatarView(info: info, size: 18)

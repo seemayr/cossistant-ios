@@ -143,14 +143,14 @@ struct ConnectionStoreTests {
     let store = makeStore()
 
     store.handleSeen(ConversationSeenPayload(
-      conversationId: "conv_001", actorType: "user",
+      conversationId: "conv_001", actorType: .user,
       actorId: "user_001", lastSeenAt: "2026-04-06T10:00:00Z"
     ))
     #expect(store.seen(for: "conv_001").count == 1)
 
     // Same actor updates, doesn't duplicate
     store.handleSeen(ConversationSeenPayload(
-      conversationId: "conv_001", actorType: "user",
+      conversationId: "conv_001", actorType: .user,
       actorId: "user_001", lastSeenAt: "2026-04-06T10:05:00Z"
     ))
     #expect(store.seen(for: "conv_001").count == 1)
@@ -158,7 +158,7 @@ struct ConnectionStoreTests {
 
     // Different actor adds
     store.handleSeen(ConversationSeenPayload(
-      conversationId: "conv_001", actorType: "ai_agent",
+      conversationId: "conv_001", actorType: .aiAgent,
       actorId: "ai_001", lastSeenAt: "2026-04-06T10:06:00Z"
     ))
     #expect(store.seen(for: "conv_001").count == 2)

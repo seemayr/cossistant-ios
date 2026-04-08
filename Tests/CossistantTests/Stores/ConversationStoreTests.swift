@@ -152,7 +152,7 @@ struct ConversationStoreEventTests {
     #expect(store.hasUnread == true)
     let payload = ConversationSeenPayload(
       conversationId: "conv_new",
-      actorType: "visitor",
+      actorType: .visitor,
       actorId: "vis_001",
       lastSeenAt: "2099-01-01T00:00:00.000Z"
     )
@@ -168,7 +168,7 @@ struct ConversationStoreEventTests {
     #expect(store.hasUnread == true)
     let payload = ConversationSeenPayload(
       conversationId: "conv_new",
-      actorType: "user",
+      actorType: .user,
       actorId: "agent_001",
       lastSeenAt: "2099-01-01T00:00:00.000Z"
     )

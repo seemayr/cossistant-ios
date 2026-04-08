@@ -137,7 +137,7 @@ public struct AIProcessingState: Sendable {
 
 public struct SeenReceipt: Sendable, Identifiable {
   public var id: String { actorId }
-  public let actorType: String
+  public let actorType: ActorType
   public let actorId: String
   public let name: String?
   public let image: String?

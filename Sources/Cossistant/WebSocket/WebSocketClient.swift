@@ -153,14 +153,15 @@ actor WebSocketClient {
       SupportLogger.wsEventReceived("conversationCreated")
     case .conversationUpdated:
       SupportLogger.wsEventReceived("conversationUpdated")
-    case .conversationTyping:
-      SupportLogger.wsEventReceived("conversationTyping")
-    case .conversationSeen:
-      SupportLogger.wsEventReceived("conversationSeen")
-    case .aiAgentProcessingProgress:
-      SupportLogger.wsEventReceived("aiAgentProcessingProgress")
-    case .aiAgentProcessingCompleted:
-      SupportLogger.wsEventReceived("aiAgentProcessingCompleted")
+    case .conversationTyping(let p):
+      let state = p.isTyping ? "started" : "stopped"
+      SupportLogger.wsEventReceived("conversationTyping(\(state))")
+    case .conversationSeen(let p):
+      SupportLogger.wsEventReceived("conversationSeen(\(p.actorType))")
+    case .aiAgentProcessingProgress(let p):
+      SupportLogger.wsEventReceived("aiAgentProcessingProgress(\(p.phase)\(p.message.map { ": \($0)" } ?? ""))")
+    case .aiAgentProcessingCompleted(let p):
+      SupportLogger.wsEventReceived("aiAgentProcessingCompleted(\(p.status)\(p.reason.map { ": \($0)" } ?? ""))")
     case .connectionEstablished:
       SupportLogger.wsEventReceived("connectionEstablished")
     case .visitorIdentified:
