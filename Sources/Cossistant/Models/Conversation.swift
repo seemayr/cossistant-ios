@@ -23,6 +23,15 @@ extension Conversation {
   public var isClosed: Bool {
     status == .resolved || status == .spam || deletedAt != nil
   }
+
+  /// Whether this conversation has unread agent replies.
+  public var isUnread: Bool {
+    guard status == .open else { return false }
+    if let last = lastTimelineItem, last.visitorId != nil,
+       last.userId == nil, last.aiAgentId == nil { return false }
+    guard let lastSeen = visitorLastSeenAt else { return true }
+    return updatedAt > lastSeen
+  }
 }
 
 public enum ConversationStatus: String, Codable, Sendable {

@@ -230,10 +230,15 @@ private struct ConversationRowView: View {
 
   private var details: some View {
     VStack(alignment: .leading, spacing: 4) {
-      HStack {
+      HStack(spacing: 8) {
         Text(conversation.title ?? R.string(.conversation_default_title))
           .font(.headline)
           .lineLimit(1)
+        
+        if conversation.isUnread {
+          Circle().fill(.red)
+            .frame(width: 12, height: 12)
+        }
 
         Spacer()
 

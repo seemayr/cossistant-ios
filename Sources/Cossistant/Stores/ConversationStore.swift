@@ -120,17 +120,9 @@ public final class ConversationStore {
 
   // MARK: - Convenience for UI
 
-  /// Whether any open conversation has unread messages from agents.
-  /// Ignores conversations where the most recent activity was by the visitor themselves.
+  /// Whether any displayable conversation has unread agent replies.
   public var hasUnread: Bool {
-    conversations.contains { conversation in
-      guard shouldDisplay(conversation), conversation.status == .open else { return false }
-      // If the last timeline item was sent by the visitor, it's not "unread"
-      if let last = conversation.lastTimelineItem, last.visitorId != nil,
-         last.userId == nil, last.aiAgentId == nil { return false }
-      guard let lastSeen = conversation.visitorLastSeenAt else { return true }
-      return conversation.updatedAt > lastSeen
-    }
+    conversations.contains { shouldDisplay($0) && $0.isUnread }
   }
 
   /// Total number of conversations.
