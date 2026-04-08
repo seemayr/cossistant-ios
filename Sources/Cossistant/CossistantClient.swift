@@ -25,6 +25,9 @@ public final class CossistantClient {
   private var pendingIdentity: PendingIdentity?
   private var pendingMetadata: VisitorMetadata?
 
+  /// Called on the main actor when the visitor sends a message. Receives the plain text.
+  public var onMessageSent: ((_ text: String) -> Void)?
+
   /// Website info returned from bootstrap.
   public private(set) var website: PublicWebsiteResponse?
 
@@ -85,6 +88,12 @@ public final class CossistantClient {
 
   /// Initializes the SDK: fetches website config, creates/retrieves visitor, connects WebSocket.
   public func bootstrap() async throws {
+    // Wire up message callback (deferred from init to avoid referencing self before fully initialized)
+    if timeline.onMessageSent == nil {
+      timeline.onMessageSent = { [weak self] text in
+        self?.onMessageSent?(text)
+      }
+    }
     SupportLogger.bootstrapStarted()
 
     // Restore visitor ID from storage if available
@@ -358,6 +367,7 @@ public final class CossistantClient {
       // 5. Reconcile: remove pending, add confirmed item
       timeline.removePending(id: localId)
       timeline.appendItemIfNew(response.item)
+      onMessageSent?(text)
     } catch {
       // 6. Mark pending as failed so UI shows retry
       timeline.markPendingFailed(id: localId, error: error.localizedDescription)

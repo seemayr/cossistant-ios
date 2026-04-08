@@ -155,6 +155,11 @@ client.updateMetadata(VisitorMetadata([
   "appVersion": .string("2.1.0"),
 ]))
 
+// Get notified when the visitor sends a message
+client.onMessageSent = { text in
+  print("Visitor sent: \(text)")
+}
+
 // Activity tracking
 try await client.sendActivity(sessionId: "session_abc")
 

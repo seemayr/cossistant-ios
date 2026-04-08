@@ -45,6 +45,7 @@ public final class TimelineStore {
   private var nextCursor: String?
   private let pageSize = 50
   let rest: RESTClient
+  var onMessageSent: ((_ text: String) -> Void)?
 
   init(rest: RESTClient) {
     self.rest = rest
@@ -124,6 +125,7 @@ public final class TimelineStore {
       if !items.contains(where: { $0.id == response.item.id }) {
         items.append(response.item)
       }
+      onMessageSent?(text)
     } catch {
       SupportLogger.storeError("Timeline", action: "sendMessage", error: error)
       // Mark as failed so UI can show retry option
