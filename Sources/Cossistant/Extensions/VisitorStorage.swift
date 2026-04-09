@@ -10,7 +10,7 @@ struct VisitorStorage: Sendable {
     websiteId: String = "default"
   ) {
     self.defaults = defaults
-    self.key = "cossistant:visitor:\(websiteId)"
+    self.key = "cossistant2:visitor:\(websiteId)"
   }
 
   var visitorId: String? {

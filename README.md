@@ -180,6 +180,11 @@ client.onMessageSent = { text in
   print("Visitor sent: \(text)")
 }
 
+// Get notified when the visitor rates a resolved conversation
+client.onConversationRated = { rating in
+  print("Visitor rated: \(rating)/5")
+}
+
 // Activity tracking
 try await client.sendActivity(sessionId: "session_abc")
 

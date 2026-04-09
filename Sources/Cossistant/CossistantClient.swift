@@ -33,6 +33,9 @@ public final class CossistantClient {
   /// Only fires for public messages of type `.message` — tool calls, events, and identification items are excluded.
   public var onMessageReceived: ((_ message: ReceivedMessage) -> Void)?
 
+  /// Called on the main actor when the visitor submits a rating for a resolved conversation.
+  public var onConversationRated: ((_ rating: Int) -> Void)?
+
   /// Website info returned from bootstrap.
   public private(set) var website: PublicWebsiteResponse?
 
@@ -115,6 +118,11 @@ public final class CossistantClient {
     if timeline.onItemCreated == nil {
       timeline.onItemCreated = { [weak self] item in
         self?.notifyMessageReceivedIfNeeded(item)
+      }
+    }
+    if timeline.onConversationRated == nil {
+      timeline.onConversationRated = { [weak self] rating in
+        self?.onConversationRated?(rating)
       }
     }
     SupportLogger.bootstrapStarted()

@@ -47,6 +47,7 @@ public final class TimelineStore {
   let rest: RESTClient
   var onMessageSent: ((_ text: String) -> Void)?
   var onItemCreated: ((_ item: TimelineItem) -> Void)?
+  var onConversationRated: ((_ rating: Int) -> Void)?
 
   init(rest: RESTClient) {
     self.rest = rest
@@ -197,6 +198,7 @@ public final class TimelineStore {
     let _: SubmitRatingResponse = try await rest.request(
       .submitRating(conversationId: conversationId), body: request
     )
+    onConversationRated?(rating)
   }
 
   /// Hydrates the timeline from a create-conversation response.
