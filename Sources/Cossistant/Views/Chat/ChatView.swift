@@ -208,7 +208,7 @@ public struct ChatView: View {
              !timeline.visibleItems.isEmpty,
              !isConversationClosed,
              !timeline.visibleItems.contains(where: { $0.userId != nil && $0.aiAgentId == nil }) {
-            Text(R.string(.empty_chat_human_note))
+            Text(CossistantContent.current.emptyChatHumanNote ?? R.string(.empty_chat_human_note))
               .font(.subheadline)
               .foregroundStyle(.tertiary)
               .multilineTextAlignment(.center)
@@ -312,11 +312,11 @@ public struct ChatView: View {
         .font(.headline)
         .foregroundStyle(.primary)
       
-      Text(R.string(.empty_chat_description))
+      Text(CossistantContent.current.emptyChatDescription ?? R.string(.empty_chat_description))
         .font(.subheadline)
         .foregroundStyle(.secondary)
-      
-      Text(R.string(.empty_chat_human_note))
+
+      Text(CossistantContent.current.emptyChatHumanNote ?? R.string(.empty_chat_human_note))
         .font(.subheadline)
         .foregroundStyle(.secondary)
         .padding(.top, 32)

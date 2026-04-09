@@ -68,7 +68,11 @@ enum R {
     case event_left
     case event_assigned
     case event_identified
+    case event_participant_requested
     case event_default_actor
+
+    // MARK: - Content Defaults
+    case participation_waiting_hint
 
     // MARK: - Parts
     case reasoning_done

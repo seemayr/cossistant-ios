@@ -133,7 +133,7 @@ private struct ConversationListEmptyView: View {
         Text(R.string(.empty_conversations_title))
           .font(.title3.weight(.semibold))
 
-        Text(R.string(.empty_conversations_description))
+        Text(CossistantContent.current.emptyConversationsDescription ?? R.string(.empty_conversations_description))
           .font(.subheadline)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)

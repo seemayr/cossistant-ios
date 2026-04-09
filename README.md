@@ -94,6 +94,26 @@ SupportNavigationView(client: client)
 
 Both parameters are optional — pass only what you want to change.
 
+### Content Customization
+
+Override default UI strings or add contextual hints with `CossistantContent`. Set it once during app setup — no view modifier needed:
+
+```swift
+CossistantContent.current = CossistantContent(
+  emptyChatHumanNote: "We're a solo dev — replies may take a day or two!",
+  participationWaitingHint: "Our team was notified. We're a small crew — thanks for your patience!"
+)
+```
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `emptyChatDescription` | Localized SDK string | Overrides the chat empty-state description |
+| `emptyChatHumanNote` | Localized SDK string | Overrides the human-review note in chat empty state and below messages |
+| `emptyConversationsDescription` | Localized SDK string | Overrides the conversation list empty-state description |
+| `participationWaitingHint` | Localized SDK string | Hint shown below the "team notified" event when a human agent is requested |
+
+All properties are optional — `nil` uses the SDK's built-in localized default.
+
 ### Reading Design Tokens
 
 Inside your own views you can read the current design tokens from the environment:

@@ -232,40 +232,59 @@ private struct RichPartsView: View {
 struct EventBubbleView: View {
   let item: TimelineItem
   let senderInfo: AgentInfo?
-  
+
+  private var eventType: String {
+    item.parts.compactMap { part -> String? in
+      if case .event(let e) = part { return e.eventType }
+      return nil
+    }.first ?? ""
+  }
+
   var body: some View {
-    HStack {
-      Spacer()
-      
-      HStack(spacing: 6) {
-        eventIcon
-        label
+    VStack(spacing: 6) {
+      HStack {
+        Spacer()
+
+        HStack(spacing: 6) {
+          eventIcon
+          label
+        }
+        .font(.caption)
+        .fontWeight(.medium)
+        .foregroundStyle(.purple.opacity(0.9))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.purple.opacity(0.08))
+        .clipShape(.capsule)
+        .overlay {
+          Capsule()
+            .stroke(Color.purple.opacity(0.5), lineWidth: 1.2)
+        }
+
+        Spacer()
       }
-      .font(.caption)
-      .fontWeight(.medium)
-      .foregroundStyle(.purple.opacity(0.9))
-      .padding(.horizontal, 12)
-      .padding(.vertical, 6)
-      .background(.purple.opacity(0.08))
-      .clipShape(.capsule)
-      .overlay {
-        Capsule()
-          .stroke(Color.purple.opacity(0.5), lineWidth: 1.2)
+
+      if eventType == "participant_requested" {
+        let hint = CossistantContent.current.participationWaitingHint
+          ?? R.string(.participation_waiting_hint)
+        Text(hint)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .multilineTextAlignment(.center)
+          .padding(.horizontal, 16)
+          .padding(.vertical, 10)
+          .background(.secondary.opacity(0.06))
+          .clipShape(.rect(cornerRadius: 12))
+          .frame(maxWidth: .infinity)
+          .padding(.horizontal, 32)
       }
-      
-      Spacer()
     }
     .padding(.vertical, 12)
     .transition(.fadeInScale)
   }
-  
+
   @ViewBuilder
   private var eventIcon: some View {
-    let eventType = item.parts.compactMap { part -> String? in
-      if case .event(let e) = part { return e.eventType }
-      return nil
-    }.first ?? ""
-    
     switch eventType {
     case "resolved":
       Image(systemSymbol: .checkmarkCircleFill)
@@ -275,6 +294,8 @@ struct EventBubbleView: View {
       Image(systemSymbol: .personBadgePlus)
     case "participant_left":
       Image(systemSymbol: .personBadgeMinus)
+    case "participant_requested":
+      Image(systemSymbol: .person2Fill)
     case "assigned":
       Image(systemSymbol: .personCropCircleBadgeCheckmark)
     case "visitor_identified":
@@ -283,7 +304,7 @@ struct EventBubbleView: View {
       Image(systemSymbol: .infoCircleFill)
     }
   }
-  
+
   private var label: Text {
     let name = senderInfo?.name ?? R.string(.event_default_actor)
     for part in item.parts {
@@ -293,6 +314,7 @@ struct EventBubbleView: View {
         case "reopened": Text(R.string(.event_reopened, name))
         case "participant_joined": Text(R.string(.event_joined, name))
         case "participant_left": Text(R.string(.event_left, name))
+        case "participant_requested": Text(R.string(.event_participant_requested, name))
         case "assigned": Text(R.string(.event_assigned, name))
         case "visitor_identified": Text(R.string(.event_identified))
         default: Text(event.eventType.replacingOccurrences(of: "_", with: " ").capitalized)

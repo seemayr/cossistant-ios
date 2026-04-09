@@ -1225,6 +1225,42 @@
         }
       }
     },
+    "event_participant_requested" : {
+      "comment" : "Event label when an AI agent requests a human team member. %@ = agent name.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat das Team benachrichtigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ notified the team"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ notificó al equipo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a notifié l'équipe"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ha notificato il team"
+          }
+        }
+      }
+    },
     "event_reopened" : {
       "comment" : "Event label when someone reopens the conversation. %@ = actor name.",
       "extractionState" : "manual",
@@ -1617,6 +1653,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nuova conversazione"
+          }
+        }
+      }
+    },
+    "participation_waiting_hint" : {
+      "comment" : "Default hint shown below the participant_requested event. Tells the visitor a team member will follow up.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jemand aus dem Team schaut sich das an. Wir melden uns, sobald wir können! ✌️"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Someone from our team will take a look. We'll get back to you as soon as we can! ✌️"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alguien del equipo le echará un vistazo. ¡Te respondemos en cuanto podamos! ✌️"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quelqu'un de l'équipe va jeter un œil. On revient vers vous dès que possible ! ✌️"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualcuno del team ci darà un'occhiata. Ti rispondiamo appena possibile! ✌️"
           }
         }
       }
