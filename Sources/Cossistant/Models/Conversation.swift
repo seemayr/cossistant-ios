@@ -25,12 +25,14 @@ extension Conversation {
   }
 
   /// Whether this conversation has unread agent replies.
+  /// Matches web widget's `deriveUnreadCount()` logic, except resolved
+  /// conversations are still counted (so visitors don't miss agent answers).
   public var isUnread: Bool {
-    guard status == .open else { return false }
-    if let last = lastTimelineItem, last.visitorId != nil,
-       last.userId == nil, last.aiAgentId == nil { return false }
+    guard status != .spam, deletedAt == nil else { return false }
+    guard let last = lastTimelineItem, last.type == .message else { return false }
+    guard last.visitorId == nil else { return false }
     guard let lastSeen = visitorLastSeenAt else { return true }
-    return updatedAt > lastSeen
+    return last.createdAt > lastSeen
   }
 }
 

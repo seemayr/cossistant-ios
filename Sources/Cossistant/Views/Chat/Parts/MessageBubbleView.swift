@@ -64,15 +64,23 @@ private struct VisitorBubbleView: View {
       VStack(alignment: .trailing, spacing: -6) {
         VStack(alignment: .trailing, spacing: 4) {
           if let text = item.text, !text.isEmpty {
-            Text(text)
-              .font(.body)
-              .foregroundStyle(.white)
-              .padding(.horizontal, 14)
-              .padding(.vertical, 10)
-              .background(.tint)
-              .clipShape(.rect(cornerRadius: 16))
-              .contextMenu { MessageContextMenu(text: text) }
-              .zIndex(1)
+            if text.isScaledEmoji {
+              Text(text)
+                .font(.system(size: text.emojiFontSize))
+                .fixedSize(horizontal: false, vertical: true)
+                .contextMenu { MessageContextMenu(text: text) }
+                .zIndex(1)
+            } else {
+              Text(text)
+                .font(.body)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.tint)
+                .clipShape(.rect(cornerRadius: 16))
+                .contextMenu { MessageContextMenu(text: text) }
+                .zIndex(1)
+            }
           }
 
           if !item.parts.isEmpty {
@@ -127,15 +135,23 @@ private struct AgentBubbleView: View {
           }
           
           if let text = item.text, !text.isEmpty {
-            Text(text)
-              .font(.body)
-              .foregroundStyle(.primary)
-              .padding(.horizontal, 14)
-              .padding(.vertical, 10)
-              .background(.secondary.opacity(0.12))
-              .clipShape(.rect(cornerRadius: 16))
-              .contextMenu { MessageContextMenu(text: text) }
-              .zIndex(1)
+            if text.isScaledEmoji {
+              Text(text)
+                .font(.system(size: text.emojiFontSize))
+                .fixedSize(horizontal: false, vertical: true)
+                .contextMenu { MessageContextMenu(text: text) }
+                .zIndex(1)
+            } else {
+              Text(text)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(.secondary.opacity(0.12))
+                .clipShape(.rect(cornerRadius: 16))
+                .contextMenu { MessageContextMenu(text: text) }
+                .zIndex(1)
+            }
           }
           
           if !item.parts.isEmpty {
@@ -176,14 +192,21 @@ private struct RichPartsView: View {
       case .text(let textPart):
         // Only render from part when item.text is missing (e.g. streaming)
         if (itemText == nil || itemText?.isEmpty == true) && !textPart.text.isEmpty {
-          Text(textPart.text)
-            .font(.body)
-            .foregroundStyle(isFromVisitor ? .white : .primary)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(isFromVisitor ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(0.12)))
-            .clipShape(.rect(cornerRadius: 16))
-            .contextMenu { MessageContextMenu(text: textPart.text) }
+          if textPart.text.isScaledEmoji {
+            Text(textPart.text)
+              .font(.system(size: textPart.text.emojiFontSize))
+              .fixedSize(horizontal: false, vertical: true)
+              .contextMenu { MessageContextMenu(text: textPart.text) }
+          } else {
+            Text(textPart.text)
+              .font(.body)
+              .foregroundStyle(isFromVisitor ? .white : .primary)
+              .padding(.horizontal, 14)
+              .padding(.vertical, 10)
+              .background(isFromVisitor ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary.opacity(0.12)))
+              .clipShape(.rect(cornerRadius: 16))
+              .contextMenu { MessageContextMenu(text: textPart.text) }
+          }
         }
       case .image(let img):
         ImagePartView(image: img)

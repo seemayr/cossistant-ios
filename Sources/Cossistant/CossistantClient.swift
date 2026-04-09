@@ -1,4 +1,5 @@
 import Foundation
+import ULID
 
 /// Main entry point for the Cossistant SDK.
 /// MainActor-isolated so it can create and hold @MainActor stores.
@@ -27,6 +28,10 @@ public final class CossistantClient {
 
   /// Called on the main actor when the visitor sends a message. Receives the plain text.
   public var onMessageSent: ((_ text: String) -> Void)?
+
+  /// Called on the main actor when a new message from an agent (human or AI) arrives via WebSocket.
+  /// Only fires for public messages of type `.message` — tool calls, events, and identification items are excluded.
+  public var onMessageReceived: ((_ message: ReceivedMessage) -> Void)?
 
   /// Website info returned from bootstrap.
   public private(set) var website: PublicWebsiteResponse?
@@ -84,6 +89,19 @@ public final class CossistantClient {
     )
   }
 
+  // MARK: - Incoming Message Notification
+
+  private func notifyMessageReceivedIfNeeded(_ item: TimelineItem) {
+    guard onMessageReceived != nil else { return }
+    guard item.type == .message, item.visibility == .public else { return }
+
+    // Only fire for non-visitor senders (agent or AI)
+    let isFromVisitor = item.visitorId != nil && !(item.visitorId?.isEmpty ?? true)
+    guard !isFromVisitor else { return }
+
+    onMessageReceived?(ReceivedMessage(item: item))
+  }
+
   // MARK: - Bootstrap
 
   /// Initializes the SDK: fetches website config, creates/retrieves visitor, connects WebSocket.
@@ -92,6 +110,11 @@ public final class CossistantClient {
     if timeline.onMessageSent == nil {
       timeline.onMessageSent = { [weak self] text in
         self?.onMessageSent?(text)
+      }
+    }
+    if timeline.onItemCreated == nil {
+      timeline.onItemCreated = { [weak self] item in
+        self?.notifyMessageReceivedIfNeeded(item)
       }
     }
     SupportLogger.bootstrapStarted()
@@ -376,6 +399,114 @@ public final class CossistantClient {
       timeline.markPendingFailed(id: localId, error: error.localizedDescription)
       throw error
     }
+  }
+
+  // MARK: - Create Conversation and Send First Message
+
+  /// Creates a new conversation with the first message bundled into the request.
+  /// Used for lazy conversation creation — the conversation is only created on the
+  /// server when the visitor actually sends a message.
+  public func createConversationAndSend(
+    text: String,
+    attachments: [FileAttachment] = [],
+    visitorId: String?
+  ) async throws -> CreateConversationResponse {
+    guard let website else { throw CossistantError.notBootstrapped }
+
+    let localConversationId = Self.generateConversationId()
+    let localId = "pending_\(UUID().uuidString)"
+    let pending = PendingMessage(
+      id: localId,
+      conversationId: localConversationId,
+      text: text,
+      attachments: attachments,
+      createdAt: Date(),
+      status: .sending
+    )
+    timeline.appendPending(pending)
+
+    do {
+      // Upload attachments (if any) using the local conversation ID for the S3 scope
+      var allParts: [TimelineItemPart] = [.text(TextPart(text: text))]
+      if !attachments.isEmpty {
+        let uploadedParts: [TimelineItemPart] = try await withThrowingTaskGroup(
+          of: TimelineItemPart.self
+        ) { group in
+          for attachment in attachments {
+            group.addTask {
+              let url = try await self.uploadFile(
+                data: attachment.data,
+                fileName: attachment.fileName,
+                contentType: attachment.contentType,
+                conversationId: localConversationId
+              )
+              if attachment.isImage {
+                return .image(ImagePart(
+                  url: url, mediaType: attachment.contentType,
+                  filename: attachment.fileName, size: attachment.fileSizeBytes
+                ))
+              } else {
+                return .file(FilePart(
+                  url: url, mediaType: attachment.contentType,
+                  filename: attachment.fileName, size: attachment.fileSizeBytes
+                ))
+              }
+            }
+          }
+          var parts: [TimelineItemPart] = []
+          for try await part in group { parts.append(part) }
+          return parts
+        }
+        allParts.append(contentsOf: uploadedParts)
+      }
+
+      // Bundle the message as a defaultTimelineItem in the create request
+      let messageItem = TimelineItem(
+        id: ULID().ulidString,
+        conversationId: localConversationId,
+        organizationId: website.organizationId,
+        visibility: .public,
+        type: .message,
+        text: text,
+        tool: nil,
+        parts: allParts,
+        userId: nil,
+        aiAgentId: nil,
+        visitorId: visitorId,
+        createdAt: SupportFormatters.formatISO8601(Date()),
+        deletedAt: nil
+      )
+
+      let request = CreateConversationRequest(
+        visitorId: visitorId,
+        conversationId: localConversationId,
+        defaultTimelineItems: [messageItem],
+        channel: "mobile"
+      )
+      let response = try await conversations.create(request)
+
+      // Hydrate timeline from the response
+      timeline.hydrate(
+        conversationId: response.conversation.id,
+        items: response.initialTimelineItems
+      )
+      onMessageSent?(text)
+
+      return response
+    } catch {
+      timeline.markPendingFailed(id: localId, error: error.localizedDescription)
+      throw error
+    }
+  }
+
+  // MARK: - ID Generation
+
+  /// Generates a conversation ID matching the server format: "CO" + 16 alphanumeric chars.
+  /// Server column is VARCHAR(18), so the ID must be at most 18 characters.
+  private static let nanoidAlphabet = Array("123456789ABCDEFGHIJKLMNPQRSTUVWXYZ")
+  private static func generateConversationId() -> String {
+    let suffix = (0..<16).map { _ in nanoidAlphabet.randomElement() ?? "0" }
+    return "CO" + String(suffix)
   }
 
   // MARK: - Activity Tracking

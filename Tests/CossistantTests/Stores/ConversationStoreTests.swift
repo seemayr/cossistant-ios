@@ -121,7 +121,7 @@ struct ConversationStoreEventTests {
     #expect(store.hasUnread == false)
   }
 
-  @Test("hasUnread is false for resolved conversations")
+  @Test("hasUnread is true for resolved conversations with unseen agent reply")
   @MainActor
   func hasUnreadResolved() throws {
     let store = makeStore()
@@ -131,7 +131,8 @@ struct ConversationStoreEventTests {
       updates: ConversationUpdates(title: "Help", status: .resolved, sentiment: nil, deletedAt: nil)
     )
     store.handleConversationUpdated(update)
-    #expect(store.hasUnread == false)
+    // Resolved conversations are still unread if the visitor hasn't seen the agent reply
+    #expect(store.hasUnread == true)
   }
 
   @Test("hasUnread becomes false after markVisitorSeen")

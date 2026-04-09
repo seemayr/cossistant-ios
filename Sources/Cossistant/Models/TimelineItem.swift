@@ -17,6 +17,27 @@ public struct TimelineItem: Codable, Sendable, Identifiable, Equatable {
   public let visitorId: String?
   public let createdAt: String
   public let deletedAt: String?
+
+  /// Custom encoding that sends nullable fields as explicit JSON `null`
+  /// instead of omitting them. The server's Zod schema uses `.nullable()`
+  /// (not `.optional()`) for userId, aiAgentId, visitorId, and text,
+  /// meaning they must be present in the JSON even when null.
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encodeIfPresent(id, forKey: .id)
+    try container.encode(conversationId, forKey: .conversationId)
+    try container.encode(organizationId, forKey: .organizationId)
+    try container.encode(visibility, forKey: .visibility)
+    try container.encode(type, forKey: .type)
+    try container.encode(text, forKey: .text)
+    try container.encodeIfPresent(tool, forKey: .tool)
+    try container.encode(parts, forKey: .parts)
+    try container.encode(userId, forKey: .userId)
+    try container.encode(aiAgentId, forKey: .aiAgentId)
+    try container.encode(visitorId, forKey: .visitorId)
+    try container.encode(createdAt, forKey: .createdAt)
+    try container.encodeIfPresent(deletedAt, forKey: .deletedAt)
+  }
 }
 
 public enum TimelineItemVisibility: String, Codable, Sendable {
@@ -200,6 +221,58 @@ public struct EventPart: Codable, Sendable, Equatable {
 public struct MetadataPart: Codable, Sendable, Equatable {
   public let type: String
   public let source: String
+}
+
+// MARK: - Received Message (for onMessageReceived callback)
+
+/// A lightweight snapshot of an incoming agent/AI message, ready for display in a notification banner.
+public struct ReceivedMessage: Sendable {
+  /// The conversation this message belongs to.
+  public let conversationId: String
+
+  /// The plain-text preview extracted from the message's text parts. `nil` when the message contains only attachments.
+  public let text: String?
+
+  /// Whether the message includes at least one image attachment.
+  public let hasImages: Bool
+
+  /// Whether the message includes at least one file (non-image) attachment.
+  public let hasFiles: Bool
+
+  /// Whether the sender is an AI agent (`true`) or a human agent (`false`).
+  public let isAI: Bool
+
+  init(item: TimelineItem) {
+    self.conversationId = item.conversationId
+    self.isAI = item.aiAgentId != nil
+
+    var textParts: [String] = []
+    var images = false
+    var files = false
+
+    // Prefer parts for rich content; fall back to top-level text
+    if !item.parts.isEmpty {
+      for part in item.parts {
+        switch part {
+        case .text(let t):
+          if !t.text.isEmpty { textParts.append(t.text) }
+        case .image:
+          images = true
+        case .file:
+          files = true
+        case .reasoning, .tool, .sourceUrl, .sourceDocument,
+             .stepStart, .event, .metadata, .unknown:
+          break
+        }
+      }
+    } else if let raw = item.text, !raw.isEmpty {
+      textParts.append(raw)
+    }
+
+    self.text = textParts.isEmpty ? nil : textParts.joined(separator: "\n")
+    self.hasImages = images
+    self.hasFiles = files
+  }
 }
 
 // MARK: - Timeline Responses

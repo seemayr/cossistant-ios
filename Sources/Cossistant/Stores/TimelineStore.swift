@@ -46,6 +46,7 @@ public final class TimelineStore {
   private let pageSize = 50
   let rest: RESTClient
   var onMessageSent: ((_ text: String) -> Void)?
+  var onItemCreated: ((_ item: TimelineItem) -> Void)?
 
   init(rest: RESTClient) {
     self.rest = rest
@@ -198,6 +199,16 @@ public final class TimelineStore {
     )
   }
 
+  /// Hydrates the timeline from a create-conversation response.
+  /// Performs a full reset like `load()` but from pre-fetched data.
+  func hydrate(conversationId: String, items newItems: [TimelineItem]) {
+    activeConversationId = conversationId
+    items = newItems
+    pendingMessages = []
+    nextCursor = nil
+    hasMore = false
+  }
+
   /// Clears the timeline (e.g. when switching conversations).
   public func clear() {
     items = []
@@ -211,6 +222,7 @@ public final class TimelineStore {
 
   func handleTimelineItemCreated(_ payload: TimelineItemEventPayload) {
     logTimelineItem(payload.item, action: "created")
+    onItemCreated?(payload.item)
     guard payload.conversationId == activeConversationId else { return }
 
     // Reconcile: if WS delivers a message we sent, remove the pending version

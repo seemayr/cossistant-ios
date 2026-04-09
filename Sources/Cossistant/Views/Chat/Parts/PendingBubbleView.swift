@@ -24,14 +24,22 @@ struct PendingBubbleView: View {
 
       VStack(alignment: .trailing, spacing: 4) {
         if !message.text.isEmpty {
-          Text(message.text)
-            .font(.body)
-            .foregroundStyle(.white.opacity(isFailed ? 0.7 : 0.9))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(isFailed ? Color.red.opacity(0.7) : design.accentColor.opacity(0.6))
-            .clipShape(.rect(cornerRadius: 16))
-            .animation(CossistantAnimation.quick, value: isFailed)
+          if message.text.isScaledEmoji {
+            Text(message.text)
+              .font(.system(size: message.text.emojiFontSize))
+              .fixedSize(horizontal: false, vertical: true)
+              .opacity(isFailed ? 0.5 : 0.8)
+              .animation(CossistantAnimation.quick, value: isFailed)
+          } else {
+            Text(message.text)
+              .font(.body)
+              .foregroundStyle(.white.opacity(isFailed ? 0.7 : 0.9))
+              .padding(.horizontal, 14)
+              .padding(.vertical, 10)
+              .background(isFailed ? Color.red.opacity(0.7) : design.accentColor.opacity(0.6))
+              .clipShape(.rect(cornerRadius: 16))
+              .animation(CossistantAnimation.quick, value: isFailed)
+          }
         }
 
         if !message.attachments.isEmpty {
@@ -41,12 +49,13 @@ struct PendingBubbleView: View {
         if isFailed {
           HStack(spacing: 12) {
             Button(R.string(.retry_short)) { onRetry?() }
-              .font(.caption)
+              .font(.subheadline)
               .buttonStyle(HapticButtonStyle(haptic: .retry))
-            Button(R.string(.discard)) { onDiscard?() }
-              .font(.caption)
-              .foregroundStyle(.secondary)
-              .buttonStyle(HapticButtonStyle())
+            
+//            Button(R.string(.discard)) { onDiscard?() }
+//              .font(.subheadline)
+//              .foregroundStyle(.secondary)
+//              .buttonStyle(HapticButtonStyle())
           }
           .transition(.fadeInScale)
         } else {

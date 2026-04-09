@@ -200,7 +200,21 @@ enum TestFixtures {
       "visitorRating": null,
       "visitorRatingAt": null,
       "deletedAt": null,
-      "visitorLastSeenAt": null
+      "visitorLastSeenAt": null,
+      "lastTimelineItem": {
+        "id": "tl_agent_001",
+        "conversationId": "conv_new",
+        "organizationId": "org_001",
+        "visibility": "public",
+        "type": "message",
+        "text": "How can I help?",
+        "parts": [{"type": "text", "text": "How can I help?"}],
+        "userId": "user_001",
+        "aiAgentId": null,
+        "visitorId": null,
+        "createdAt": "2026-04-06T11:00:00.000Z",
+        "deletedAt": null
+      }
     }
   }
   """.data(using: .utf8)!

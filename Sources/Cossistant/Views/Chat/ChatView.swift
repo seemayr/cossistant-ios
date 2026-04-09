@@ -144,12 +144,32 @@ public struct ChatView: View {
           ForEach(timeline.pendingMessages) { pending in
             PendingBubbleView(
               message: pending,
-              onRetry: { Task { try? await timeline.retrySend(pendingId: pending.id, visitorId: visitorId) } },
+              onRetry: {
+                Task {
+                  if activeConversationId == nil {
+                    let retryText = pending.text
+                    let retryAttachments = pending.attachments
+                    timeline.discardPending(pendingId: pending.id)
+                    await createAndSendFirstMessage(text: retryText, attachments: retryAttachments)
+                  } else {
+                    try? await timeline.retrySend(pendingId: pending.id, visitorId: visitorId)
+                  }
+                }
+              },
               onDiscard: { timeline.discardPending(pendingId: pending.id) }
             )
             .id(pending.id)
             .padding(.top, 8)
             .transition(.slideUpFade)
+
+            if case .failed = pending.status, activeConversationId == nil,
+               let email = client.configuration.supportEmail {
+              DirectContactButton(email: email)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.top, 32)
+            }
           }
 
           // Typing indicator
@@ -216,10 +236,16 @@ public struct ChatView: View {
       }
       .onChange(of: timeline.visibleItems.count) { oldCount, newCount in
         if isNearBottom { scrollToBottom(proxy: proxy) }
-        // Play haptic for agent messages arriving
+        // Play haptic for agent messages arriving + auto-mark seen
         if newCount > oldCount, let last = timeline.visibleItems.last,
           last.visitorId == nil {
           SupportHaptics.play(.messageReceived)
+          if let convId = activeConversationId {
+            Task {
+              try? await timeline.markSeen()
+              conversations.markVisitorSeen(conversationId: convId)
+            }
+          }
         }
       }
       .onChange(of: timeline.pendingMessages.count) {
@@ -259,6 +285,11 @@ public struct ChatView: View {
         }
         .buttonStyle(HapticButtonStyle(haptic: .retry))
         .controlSize(.small)
+
+        if let email = client.configuration.supportEmail {
+          DirectContactButton(email: email)
+            .controlSize(.small)
+        }
       }
       .frame(maxWidth: .infinity)
       .padding(.vertical, 20)
@@ -400,23 +431,14 @@ public struct ChatView: View {
         chatState = .failed(error.localizedDescription)
       }
     } else {
-      // New conversation — create it
-      chatState = .creating
-      do {
-        let request = CreateConversationRequest(visitorId: visitorId, channel: "mobile")
-        let response: CreateConversationResponse = try await timeline.rest.request(.createConversation, body: request)
-        activeConversationId = response.conversation.id
-        try await timeline.load(conversationId: response.conversation.id)
-        SupportHaptics.play(.conversationCreated)
-        chatState = .ready
+      // New conversation — show chat UI immediately, create lazily on first send
+      chatState = .ready
 
-        // Auto-send initial message from context
-        if let message = context?.initialMessage, !message.isEmpty {
-          try? await timeline.sendMessage(text: message, visitorId: visitorId)
-        }
-      } catch {
-        SupportHaptics.play(.error)
-        chatState = .failed(error.localizedDescription)
+      // Auto-send initial message from context (triggers lazy creation)
+      if let message = context?.initialMessage, !message.isEmpty {
+        isSending = true
+        await createAndSendFirstMessage(text: message, attachments: [])
+        isSending = false
       }
     }
   }
@@ -432,7 +454,9 @@ public struct ChatView: View {
     SupportHaptics.play(.messageSent)
 
     Task {
-      if filesToSend.isEmpty {
+      if activeConversationId == nil {
+        await createAndSendFirstMessage(text: text, attachments: filesToSend)
+      } else if filesToSend.isEmpty {
         try? await timeline.sendMessage(text: text, visitorId: visitorId)
       } else {
         try? await client.sendMessageWithAttachments(
@@ -440,6 +464,20 @@ public struct ChatView: View {
         )
       }
       isSending = false
+    }
+  }
+
+  /// Creates the conversation on the server with the first message bundled,
+  /// then transitions to the created state.
+  private func createAndSendFirstMessage(text: String, attachments: [FileAttachment]) async {
+    do {
+      let response = try await client.createConversationAndSend(
+        text: text, attachments: attachments, visitorId: visitorId
+      )
+      activeConversationId = response.conversation.id
+      SupportHaptics.play(.conversationCreated)
+    } catch {
+      SupportHaptics.play(.error)
     }
   }
 
@@ -731,23 +769,25 @@ private struct AIProgressBubbleView: View {
   let phase: String?
   let message: String?
 
-  @Environment(\.cossistantDesign) private var design
+  @State private var drifting = false
 
   var body: some View {
+    HStack(spacing: 5) {
+      Image(systemSymbol: .arrowRight)
+        .font(.caption2)
+        .offset(x: drifting ? 3 : -3)
 
-    HStack {
-      HStack(spacing: 8) {
-        AnimatedDotsView(style: .pulse, dotSize: 5, spacing: 3)
-
-        Text(phaseLabel)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+      Text(phaseLabel)
+        .font(.caption2)
+    }
+    .foregroundStyle(.secondary)
+    .opacity(0.5)
+    .padding(.leading, 4)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .onAppear {
+      withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+        drifting = true
       }
-      .padding(.horizontal, 14)
-      .padding(.vertical, 10)
-      .background(design.accentColor.opacity(0.08))
-      .clipShape(.rect(cornerRadius: 16))
-      Spacer()
     }
   }
 
