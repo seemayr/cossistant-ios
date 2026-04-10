@@ -28,6 +28,10 @@ public final class CossistantClient {
   private var isVisitorIdentified = false
   private var metadataFlushState = MetadataFlushState()
 
+  /// Support email address shown in error views. Mutable so it can be updated after init.
+  /// Initialized from ``Configuration/supportEmail``.
+  public var supportEmail: String?
+
   /// Called on the main actor when the visitor sends a message. Receives the plain text.
   public var onMessageSent: ((_ text: String) -> Void)?
 
@@ -60,6 +64,7 @@ public final class CossistantClient {
     shouldConnectWebSocketOnBootstrap: Bool
   ) {
     self.configuration = configuration
+    self.supportEmail = configuration.supportEmail
     self.rest = RESTClient(configuration: configuration, session: restSession)
     self.storage = storage
     self.shouldConnectWebSocketOnBootstrap = shouldConnectWebSocketOnBootstrap

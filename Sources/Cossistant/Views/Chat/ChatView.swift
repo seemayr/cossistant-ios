@@ -190,7 +190,7 @@ public struct ChatView: View {
             .transition(.slideUpFade)
 
             if case .failed = pending.status, activeConversationId == nil,
-               let email = client.configuration.supportEmail {
+               let email = client.supportEmail {
               DirectContactButton(email: email)
                 .font(.footnote)
                 .fontWeight(.medium)
@@ -313,7 +313,7 @@ public struct ChatView: View {
         .buttonStyle(HapticButtonStyle(haptic: .retry))
         .controlSize(.small)
 
-        if let email = client.configuration.supportEmail {
+        if let email = client.supportEmail {
           DirectContactButton(email: email)
             .controlSize(.small)
         }

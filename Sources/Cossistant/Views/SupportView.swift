@@ -196,7 +196,7 @@ public struct SupportView: View {
       })
       .buttonStyle(HapticButtonStyle(haptic: .retry))
 
-      if let email = client.configuration.supportEmail {
+      if let email = client.supportEmail {
         DirectContactButton(email: email)
           .font(.body)
           .fontWeight(.medium)

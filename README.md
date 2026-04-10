@@ -81,7 +81,7 @@ Identity and contact metadata are attached via `prepareSupportContact` before th
 | `origin` | Yes | Must match a whitelisted domain in your Cossistant dashboard. Test keys accept `http://localhost:3000`. |
 | `apiBaseURL` | No | REST API base URL (defaults to `https://api.cossistant.com/v1`) |
 | `webSocketBaseURL` | No | WebSocket base URL (defaults to `wss://api.cossistant.com/ws`) |
-| `supportEmail` | No | When set, shows a "Direct Contact" button in error views |
+| `supportEmail` | No | When set, shows a "Direct Contact" button in error views. Also settable on the client after init via `client.supportEmail`. |
 
 ## Customization
 
