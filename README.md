@@ -52,21 +52,26 @@ SupportNavigationView(client: client, onDismiss: { dismiss() })
 
 ### Auto-Create with Context
 
-Skip the conversation list and go straight to a new conversation with metadata:
+Skip the conversation list and go straight to a new conversation with context:
 
 ```swift
 SupportView(
   client: client,
   autoCreate: SupportContext(
     source: "game_loading",
-    metadata: VisitorMetadata([
-      "gameId": .string(game.id),
-      "groupId": .string(group.id),
+    autoCreateConversation: true,
+    identity: SupportIdentity(externalId: user.id, email: user.email),
+    contactMetadata: VisitorMetadata(["plan": .string("pro")]),
+    conversationContext: VisitorMetadata([
+      "supportLastGameId": .string(game.id),
+      "supportLastGroupId": .string(group.id),
     ]),
     initialMessage: "I'm having trouble loading a game."
   )
 )
 ```
+
+Identity and metadata are attached via `prepareSupportContact` / `prepareSupportConversationContext` before the first message is sent. If either step fails, support still opens — a banner surfaces the issue with a retry option.
 
 ## Configuration
 
@@ -111,6 +116,9 @@ CossistantContent.current = CossistantContent(
 | `emptyChatHumanNote` | Localized SDK string | Overrides the human-review note in chat empty state and below messages |
 | `emptyConversationsDescription` | Localized SDK string | Overrides the conversation list empty-state description |
 | `participationWaitingHint` | Localized SDK string | Hint shown below the "team notified" event when a human agent is requested |
+| `supportPreparationWarningTitle` | `"Details unavailable"` | Shared title for the degraded-state banner |
+| `supportPreparationIdentificationMessage` | Localized SDK string | Message when visitor identification fails |
+| `supportPreparationDetailsMessage` | Localized SDK string | Message when metadata or context attachment fails |
 
 All properties are optional — `nil` uses the SDK's built-in localized default.
 
@@ -135,7 +143,7 @@ var body: some View {
 - Conversation list with pagination
 - File and image upload attachments with fullscreen image viewer
 - Long-press copy on message bubbles
-- Visitor identification and metadata
+- Visitor identification and metadata with graceful degradation
 - Conversation ratings
 - Activity tracking (heartbeat, focus)
 - Localized UI (English, German, Spanish, French, Italian)
@@ -166,10 +174,10 @@ try await client.identify(
   metadata: VisitorMetadata(["plan": .string("pro")])
 )
 
-// Clear identity on logout
+// Clear identity on logout (full reset: visitor ID, storage, REST state)
 client.clearIdentity()
 
-// Update visitor metadata (merge, not replace — works before or after bootstrap)
+// Update visitor metadata (merge, not replace — requires identified visitor)
 client.updateMetadata(VisitorMetadata([
   "lastScreen": .string("settings"),
   "appVersion": .string("2.1.0"),
