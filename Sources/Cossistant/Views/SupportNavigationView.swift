@@ -15,16 +15,19 @@ import SwiftUI
 /// ```
 public struct SupportNavigationView: View {
   private let client: CossistantClient
-  private let autoCreate: SupportContext?
+  private let conversationChannel: String?
+  private let supportContext: SupportContext?
   private let onDismiss: (() -> Void)?
 
   public init(
     client: CossistantClient,
+    channel: String? = nil,
     autoCreate: SupportContext? = nil,
     onDismiss: (() -> Void)? = nil
   ) {
     self.client = client
-    self.autoCreate = autoCreate
+    self.conversationChannel = channel
+    self.supportContext = autoCreate
     self.onDismiss = onDismiss
   }
 
@@ -32,7 +35,8 @@ public struct SupportNavigationView: View {
     NavigationStack {
       SupportView(
         client: client,
-        autoCreate: autoCreate,
+        channel: conversationChannel,
+        autoCreate: supportContext,
         onDismiss: onDismiss
       )
     }

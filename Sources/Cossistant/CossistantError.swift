@@ -20,6 +20,9 @@ public enum CossistantError: Error, Sendable {
   /// Attempted an operation before `bootstrap()` was called.
   case notBootstrapped
 
+  /// Attempted an operation that requires an identified visitor/contact.
+  case visitorNotIdentified
+
   /// The visitor has been blocked by the support team.
   case visitorBlocked
 

@@ -20,6 +20,10 @@ actor RESTClient {
     self.visitorId = id
   }
 
+  func clearVisitorId() {
+    visitorId = nil
+  }
+
   // MARK: - Request Execution
 
   func request<T: Decodable & Sendable>(

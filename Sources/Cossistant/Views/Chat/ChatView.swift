@@ -21,6 +21,8 @@ public struct ChatView: View {
   private let visitorId: String?
   private let initialConversationId: String?
   private let context: SupportContext?
+  private let conversationChannel: String?
+  private let supportSession: SupportSessionStore
 
   @State private var chatState: ChatState = .loading
   @State private var activeConversationId: String?
@@ -63,7 +65,9 @@ public struct ChatView: View {
     agents: AgentRegistry,
     visitorId: String?,
     conversationId: String?,
-    context: SupportContext? = nil
+    context: SupportContext? = nil,
+    conversationChannel: String? = nil,
+    supportSession: SupportSessionStore
   ) {
     self.client = client
     self.timeline = timeline
@@ -73,11 +77,30 @@ public struct ChatView: View {
     self.visitorId = visitorId
     self.initialConversationId = conversationId
     self.context = context
+    self.conversationChannel = conversationChannel
+    self.supportSession = supportSession
   }
 
   public var body: some View {
 
     VStack(spacing: 0) {
+      if let issue = supportSession.bannerIssue {
+        SupportPreparationBanner(
+          issue: issue,
+          isRetrying: supportSession.isPreparing,
+          onRetry: {
+            Task {
+              await supportSession.retry(
+                using: client,
+                includeConversationContext: context?.conversationContext.storage.isEmpty == false
+              )
+            }
+          }
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+      }
+
       messageArea
       
       Divider()
@@ -471,8 +494,12 @@ public struct ChatView: View {
   /// then transitions to the created state.
   private func createAndSendFirstMessage(text: String, attachments: [FileAttachment]) async {
     do {
+      await supportSession.prepareForNewConversation(using: client)
       let response = try await client.createConversationAndSend(
-        text: text, attachments: attachments, visitorId: visitorId
+        text: text,
+        attachments: attachments,
+        visitorId: visitorId,
+        channel: conversationChannel
       )
       activeConversationId = response.conversation.id
       SupportHaptics.play(.conversationCreated)

@@ -6,7 +6,7 @@ These rules are designed for a production Swift SDK consumed by apps with millio
 ### 1. Public API Surface
 - New public methods/types are intentional — nothing leaks internal state
 - Naming is clear and self-documenting for SDK consumers who don't read our source
-- Default parameter values are sensible (`= nil`, `= []`, `= "mobile"`)
+- Default parameter values are sensible (`= nil`, `= []`, `= "apple"`)
 - `async throws` pattern used consistently (no callbacks, no Combine)
 - Breaking changes flagged explicitly — renamed/removed public API requires README update
 - Present findings in a table: Change | Breaking? | Notes

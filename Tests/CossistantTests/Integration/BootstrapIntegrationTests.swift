@@ -68,7 +68,7 @@ struct BootstrapIntegrationTests {
     // 3. Create conversation
     let createRequest = CreateConversationRequest(
       visitorId: website.visitor.id,
-      channel: "mobile"
+      channel: "apple"
     )
     let createResponse: CreateConversationResponse = try await rest.request(
       .createConversation, body: createRequest

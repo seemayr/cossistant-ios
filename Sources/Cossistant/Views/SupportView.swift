@@ -26,9 +26,10 @@ import SFSafeSymbols
 ///   client: client,
 ///   autoCreate: SupportContext(
 ///     source: "game_loading",
-///     metadata: VisitorMetadata([
-///       "gameId": .string(game.id),
-///       "groupId": .string(group.id),
+///     autoCreateConversation: true,
+///     conversationContext: VisitorMetadata([
+///       "supportLastGameId": .string(game.id),
+///       "supportLastGroupId": .string(group.id),
 ///     ]),
 ///     initialMessage: "I'm having trouble loading a game."
 ///   )
@@ -36,28 +37,35 @@ import SFSafeSymbols
 /// ```
 public struct SupportView: View {
   private let client: CossistantClient
-  private let autoCreate: SupportContext?
+  private let supportContext: SupportContext?
+  private let conversationChannel: String?
   private let onDismiss: (() -> Void)?
 
   @State private var connectionToken = ConnectionToken()
+  @State private var supportSession: SupportSessionStore
   @State private var isBootstrapped = false
   @State private var bootError: String?
   @State private var chatDestination: ChatDestination?
 
   /// - Parameters:
   ///   - client: The initialized CossistantClient.
+  ///   - channel: Optional conversation channel forwarded when this view creates
+  ///              a new conversation. Defaults to the client's built-in channel.
   ///   - autoCreate: When provided, automatically creates a new conversation on first open
   ///                 with the given context metadata and optional initial message.
   ///   - onDismiss: When provided, a close button is shown in the toolbar.
   ///                The host is responsible for actually dismissing the view.
   public init(
     client: CossistantClient,
+    channel: String? = nil,
     autoCreate: SupportContext? = nil,
     onDismiss: (() -> Void)? = nil
   ) {
     self.client = client
-    self.autoCreate = autoCreate
+    self.conversationChannel = channel
+    self.supportContext = autoCreate
     self.onDismiss = onDismiss
+    _supportSession = State(initialValue: SupportSessionStore(context: autoCreate))
   }
 
   public var body: some View {
@@ -91,7 +99,9 @@ public struct SupportView: View {
         agents: client.agents,
         visitorId: client.visitorId,
         conversationId: destination.conversationId,
-        context: destination.context
+        context: destination.context,
+        conversationChannel: conversationChannel,
+        supportSession: supportSession
       )
     }
     .onChange(of: chatDestination) { oldValue, newValue in
@@ -120,9 +130,24 @@ public struct SupportView: View {
         chatDestination = .conversation(id: conversation.id)
       },
       onNewConversation: {
-        chatDestination = .new(context: nil)
+        chatDestination = .new(context: supportContext)
       }
     )
+    .safeAreaInset(edge: .top) {
+      if let issue = supportSession.bannerIssue {
+        SupportPreparationBanner(
+          issue: issue,
+          isRetrying: supportSession.isPreparing,
+          onRetry: {
+            Task {
+              await supportSession.retry(using: client, includeConversationContext: false)
+            }
+          }
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+      }
+    }
     .navigationTitle(R.string(.support_title))
     #if os(iOS)
     .navigationBarTitleDisplayMode(.inline)
@@ -137,15 +162,11 @@ public struct SupportView: View {
       try await connectionToken.attach(client)
       try await client.conversations.load()
       isBootstrapped = true
+      supportSession.prepareOnOpen(using: client)
 
       // Auto-create: skip the list and go straight to a new conversation
-      if let context = autoCreate {
+      if let context = supportContext, context.autoCreateConversation {
         chatDestination = .new(context: context)
-
-        // Attach context metadata to visitor
-        if !context.metadata.storage.isEmpty {
-          client.updateMetadata(context.metadata)
-        }
       }
     } catch {
       bootError = error.localizedDescription
@@ -241,7 +262,8 @@ private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIG
         origin: previewOrigin,
         supportEmail: "support@sample.com"
       )
-    )
+    ),
+    channel: "ios_preview"
   )
 }
 
@@ -285,6 +307,7 @@ private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIG
         supportEmail: "support@sample.com"
       )
     ),
+    channel: "ios_sheet_preview",
     onDismiss: {}
   )
 }
@@ -297,11 +320,13 @@ private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIG
         origin: previewOrigin
       )
     ),
+    channel: "ios_autocreate_preview",
     autoCreate: SupportContext(
       source: "game_loading",
-      metadata: VisitorMetadata([
-        "gameId": .string("test_game_001"),
-        "groupId": .string("test_group_001"),
+      autoCreateConversation: true,
+      conversationContext: VisitorMetadata([
+        "supportLastGameId": .string("test_game_001"),
+        "supportLastGroupId": .string("test_group_001"),
       ]),
       initialMessage: "I'm having trouble loading a game."
     )

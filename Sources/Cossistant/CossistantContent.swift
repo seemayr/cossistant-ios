@@ -9,7 +9,8 @@ import Foundation
 /// ```swift
 /// CossistantContent.current = CossistantContent(
 ///   emptyChatHumanNote: "We're a solo dev — replies may take a day or two!",
-///   participationWaitingHint: "Our team was notified. We're a small crew — thanks for your patience!"
+///   participationWaitingHint: "Our team was notified. We're a small crew — thanks for your patience!",
+///   supportPreparationWarningTitle: "Details unavailable"
 /// )
 /// ```
 public struct CossistantContent: Sendable {
@@ -31,16 +32,34 @@ public struct CossistantContent: Sendable {
   /// Default: localized "Someone from our team will take a look. Hang tight — we'll get back to you!"
   public var participationWaitingHint: String?
 
+  /// Overrides the shared title shown when support details could not be attached.
+  /// Default: "Details unavailable"
+  public var supportPreparationWarningTitle: String?
+
+  /// Overrides the message shown when the visitor could not be identified.
+  /// Default: "You can still contact support, but we couldn't attach your account details right now."
+  public var supportPreparationIdentificationMessage: String?
+
+  /// Overrides the message shown when support metadata or context could not be attached.
+  /// Default: "You can still contact support, but some support details may be missing."
+  public var supportPreparationDetailsMessage: String?
+
   public init(
     emptyChatDescription: String? = nil,
     emptyChatHumanNote: String? = nil,
     emptyConversationsDescription: String? = nil,
-    participationWaitingHint: String? = nil
+    participationWaitingHint: String? = nil,
+    supportPreparationWarningTitle: String? = nil,
+    supportPreparationIdentificationMessage: String? = nil,
+    supportPreparationDetailsMessage: String? = nil
   ) {
     self.emptyChatDescription = emptyChatDescription
     self.emptyChatHumanNote = emptyChatHumanNote
     self.emptyConversationsDescription = emptyConversationsDescription
     self.participationWaitingHint = participationWaitingHint
+    self.supportPreparationWarningTitle = supportPreparationWarningTitle
+    self.supportPreparationIdentificationMessage = supportPreparationIdentificationMessage
+    self.supportPreparationDetailsMessage = supportPreparationDetailsMessage
   }
 
   /// The active content configuration. Set once during app setup.

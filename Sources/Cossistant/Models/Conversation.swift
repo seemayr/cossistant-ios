@@ -69,7 +69,7 @@ public struct CreateConversationRequest: Codable, Sendable {
     visitorId: String? = nil,
     conversationId: String? = nil,
     defaultTimelineItems: [TimelineItem] = [],
-    channel: String = "mobile"
+    channel: String = "apple"
   ) {
     self.visitorId = visitorId
     self.conversationId = conversationId

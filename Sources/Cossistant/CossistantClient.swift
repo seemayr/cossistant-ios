@@ -25,6 +25,8 @@ public final class CossistantClient {
   private let storage: VisitorStorage
   private var pendingIdentity: PendingIdentity?
   private var pendingMetadata: VisitorMetadata?
+  private var isVisitorIdentified = false
+  private var isFlushingMetadata = false
 
   /// Called on the main actor when the visitor sends a message. Receives the plain text.
   public var onMessageSent: ((_ text: String) -> Void)?
@@ -135,6 +137,7 @@ public final class CossistantClient {
     let response: PublicWebsiteResponse = try await rest.request(.getWebsite)
     website = response
     visitorId = response.visitor.id
+    isVisitorIdentified = response.visitor.contact != nil
     agents.populate(from: response)
 
     // Persist visitor ID
@@ -159,23 +162,16 @@ public final class CossistantClient {
           image: identity.image,
           metadata: identity.metadata
         )
+        if pendingIdentity == identity {
+          pendingIdentity = nil
+        }
       } catch {
         SupportLogger.identifyFailed(error)
       }
     }
 
-    // Flush queued metadata in the background (doesn't affect conversation results)
-    if let metadata = pendingMetadata {
-      pendingMetadata = nil
-      let vid = response.visitor.id
-      Task {
-        do {
-          let request = UpdateVisitorMetadataRequest(metadata: metadata)
-          try await rest.requestVoid(.updateVisitorMetadata(visitorId: vid), body: request)
-        } catch {
-          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
-        }
-      }
+    if isVisitorIdentified {
+      flushPendingMetadataIfPossible()
     }
 
     // Connect WebSocket
@@ -228,6 +224,13 @@ public final class CossistantClient {
   public func clearIdentity() {
     pendingIdentity = nil
     pendingMetadata = nil
+    isVisitorIdentified = false
+    isFlushingMetadata = false
+    visitorId = nil
+    storage.visitorId = nil
+    Task {
+      await rest.clearVisitorId()
+    }
   }
 
   /// Links the current visitor to a contact with metadata.
@@ -246,9 +249,76 @@ public final class CossistantClient {
       image: image,
       metadata: metadata
     )
-    let _: IdentifyContactResponse = try await rest.request(
+    let response: IdentifyContactResponse = try await rest.request(
       .identifyContact, body: request
     )
+    isVisitorIdentified = true
+    SupportLogger.identifySuccess(contactId: response.contact.id)
+    flushPendingMetadataIfPossible()
+  }
+
+  public func prepareSupportContact(
+    identity: SupportIdentity?,
+    metadata: VisitorMetadata = VisitorMetadata()
+  ) async -> SupportPreparationReport {
+    if let identity {
+      do {
+        try await identify(
+          externalId: identity.externalId,
+          email: identity.email,
+          name: identity.name,
+          image: identity.image,
+          metadata: metadata.storage.isEmpty ? nil : metadata
+        )
+        return SupportPreparationReport()
+      } catch {
+        SupportLogger.identifyFailed(error)
+        return SupportPreparationReport(issues: [
+          SupportPreparationIssue(
+            step: .identification,
+            technicalDetails: error.localizedDescription
+          )
+        ])
+      }
+    }
+
+    guard !metadata.storage.isEmpty else {
+      return SupportPreparationReport()
+    }
+
+    do {
+      try await updateMetadataNow(metadata)
+      return SupportPreparationReport()
+    } catch {
+      SupportLogger.storeError("Client", action: "prepareSupportContact", error: error)
+      return SupportPreparationReport(issues: [
+        SupportPreparationIssue(
+          step: .contactMetadata,
+          technicalDetails: error.localizedDescription
+        )
+      ])
+    }
+  }
+
+  public func prepareSupportConversationContext(
+    _ metadata: VisitorMetadata
+  ) async -> SupportPreparationReport {
+    guard !metadata.storage.isEmpty else {
+      return SupportPreparationReport()
+    }
+
+    do {
+      try await updateMetadataNow(metadata)
+      return SupportPreparationReport()
+    } catch {
+      SupportLogger.storeError("Client", action: "prepareSupportConversationContext", error: error)
+      return SupportPreparationReport(issues: [
+        SupportPreparationIssue(
+          step: .conversationContext,
+          technicalDetails: error.localizedDescription
+        )
+      ])
+    }
   }
 
   /// Updates the visitor's metadata (merge, not replace). Works regardless of bootstrap state:
@@ -257,26 +327,62 @@ public final class CossistantClient {
   ///
   /// Each call merges into the pending metadata — keys from later calls overwrite earlier ones.
   public func updateMetadata(_ metadata: VisitorMetadata) {
-    // Merge into local pending state
+    mergePendingMetadata(metadata)
+    flushPendingMetadataIfPossible()
+  }
+
+  private func flushPendingMetadataIfPossible() {
+    guard visitorId != nil, isVisitorIdentified, pendingMetadata != nil, !isFlushingMetadata else {
+      return
+    }
+
+    isFlushingMetadata = true
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      defer { self.isFlushingMetadata = false }
+
+      while self.visitorId != nil, self.isVisitorIdentified, self.pendingMetadata != nil {
+        do {
+          try await self.flushPendingMetadataNow(requireIdentifiedVisitor: false)
+        } catch {
+          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+          break
+        }
+      }
+    }
+  }
+
+  private func mergePendingMetadata(_ metadata: VisitorMetadata) {
     if var existing = pendingMetadata {
       existing.storage.merge(metadata.storage) { _, new in new }
       pendingMetadata = existing
     } else {
       pendingMetadata = metadata
     }
+  }
 
-    // If already bootstrapped, flush immediately
-    if let visitorId {
-      let merged = pendingMetadata!
-      pendingMetadata = nil
-      Task {
-        do {
-          let request = UpdateVisitorMetadataRequest(metadata: merged)
-          try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
-        } catch {
-          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
-        }
+  private func updateMetadataNow(_ metadata: VisitorMetadata) async throws {
+    mergePendingMetadata(metadata)
+    try await flushPendingMetadataNow(requireIdentifiedVisitor: true)
+  }
+
+  private func flushPendingMetadataNow(requireIdentifiedVisitor: Bool) async throws {
+    guard let visitorId else {
+      throw CossistantError.notBootstrapped
+    }
+    guard pendingMetadata != nil else { return }
+    guard isVisitorIdentified else {
+      if requireIdentifiedVisitor {
+        throw CossistantError.visitorNotIdentified
       }
+      return
+    }
+    guard let metadata = pendingMetadata else { return }
+
+    let request = UpdateVisitorMetadataRequest(metadata: metadata)
+    try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
+    if pendingMetadata == metadata {
+      pendingMetadata = nil
     }
   }
 
@@ -417,7 +523,8 @@ public final class CossistantClient {
   public func createConversationAndSend(
     text: String,
     attachments: [FileAttachment] = [],
-    visitorId: String?
+    visitorId: String?,
+    channel: String? = nil
   ) async throws -> CreateConversationResponse {
     guard let website else { throw CossistantError.notBootstrapped }
 
@@ -489,7 +596,7 @@ public final class CossistantClient {
         visitorId: visitorId,
         conversationId: localConversationId,
         defaultTimelineItems: [messageItem],
-        channel: "mobile"
+        channel: channel ?? "apple"
       )
       let response = try await conversations.create(request)
 
@@ -544,7 +651,7 @@ public final class CossistantClient {
 
 // MARK: - Pending Identity
 
-private struct PendingIdentity: Sendable {
+private struct PendingIdentity: Sendable, Equatable {
   let externalId: String?
   let email: String?
   let name: String?
