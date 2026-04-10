@@ -11,6 +11,18 @@ struct MockNetworkTests {
     origin: TestFixtures.testOrigin
   )
 
+  @MainActor
+  private func makeClient(storageKey: String = UUID().uuidString) -> CossistantClient {
+    let defaults = UserDefaults(suiteName: storageKey)!
+    defaults.removePersistentDomain(forName: storageKey)
+    return CossistantClient(
+      configuration: configuration,
+      restSession: MockURLProtocol.mockSession(),
+      storage: VisitorStorage(defaults: defaults, websiteId: storageKey),
+      shouldConnectWebSocketOnBootstrap: false
+    )
+  }
+
   // MARK: - RESTClient Headers & Errors
 
   @Test("RESTClient sends correct headers")
@@ -375,6 +387,292 @@ struct MockNetworkTests {
     #expect(capturedPath?.contains("/visitors/vis_001/metadata") == true)
   }
 
+  @Test("Metadata flush serializes updates while a flush is in flight")
+  @MainActor
+  func metadataFlushSerializesConcurrentUpdates() async throws {
+    let probe = MetadataRequestProbe(blockFirstRequest: true)
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    client.setIdentity(externalId: "user_123")
+    try await client.bootstrap()
+
+    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    client.updateMetadata(VisitorMetadata(["source": "support"]))
+    probe.releaseBlockedRequest()
+
+    try await waitUntil {
+      probe.requestCount == 2
+    }
+
+    #expect(probe.maxConcurrentRequests == 1)
+    #expect(probe.requests[0]["plan"] == .string("starter"))
+    #expect(probe.requests[1]["plan"] == .string("starter"))
+    #expect(probe.requests[1]["source"] == .string("support"))
+  }
+
+  @Test("Support context waits for an active background metadata flush")
+  @MainActor
+  func supportContextWaitsForBackgroundFlush() async throws {
+    let probe = MetadataRequestProbe(blockFirstRequest: true)
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    client.setIdentity(externalId: "user_123")
+    try await client.bootstrap()
+
+    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    let reportTask = Task { @MainActor in
+      await client.prepareSupportConversationContext(
+        VisitorMetadata(["supportLastSource": "game"])
+      )
+    }
+
+    try await Task.sleep(for: .milliseconds(50))
+    #expect(probe.requestCount == 1)
+    #expect(probe.maxConcurrentRequests == 1)
+
+    probe.releaseBlockedRequest()
+    let report = await reportTask.value
+
+    try await waitUntil {
+      probe.requestCount == 2
+    }
+
+    #expect(report.issues.isEmpty)
+    #expect(probe.requests[1]["plan"] == .string("starter"))
+    #expect(probe.requests[1]["supportLastSource"] == .string("game"))
+  }
+
+  @Test("Latest value wins when the same metadata key changes during an in-flight flush")
+  @MainActor
+  func metadataLatestValueWinsAcrossSerializedFlushes() async throws {
+    let probe = MetadataRequestProbe(blockFirstRequest: true)
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    client.setIdentity(externalId: "user_123")
+    try await client.bootstrap()
+
+    client.updateMetadata(VisitorMetadata(["supportLastGroupId": "group_a"]))
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    let reportTask = Task { @MainActor in
+      await client.prepareSupportConversationContext(
+        VisitorMetadata(["supportLastGroupId": "group_b"])
+      )
+    }
+    probe.releaseBlockedRequest()
+    let report = await reportTask.value
+
+    try await waitUntil {
+      probe.requestCount == 2
+    }
+
+    #expect(report.issues.isEmpty)
+    #expect(probe.requests[0]["supportLastGroupId"] == .string("group_a"))
+    #expect(probe.requests[1]["supportLastGroupId"] == .string("group_b"))
+  }
+
+  @Test("Failed metadata flush stays queued until a later retry trigger succeeds")
+  @MainActor
+  func failedMetadataFlushIsRetriedLater() async throws {
+    let probe = MetadataRequestProbe()
+    var patchAttempt = 0
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        patchAttempt += 1
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        if patchAttempt == 1 {
+          return (HTTPURLResponse(url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!, "Server Error".data(using: .utf8)!)
+        }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    client.setIdentity(externalId: "user_123")
+    try await client.bootstrap()
+
+    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    try await client.identify(externalId: "user_123")
+    try await waitUntil {
+      probe.requestCount == 2
+    }
+
+    #expect(probe.requests[0] == VisitorMetadata(["plan": "starter"]))
+    #expect(probe.requests[1] == VisitorMetadata(["plan": "starter"]))
+  }
+
+  @Test("Anonymous metadata stays queued and awaited support prep reports a degraded state")
+  @MainActor
+  func anonymousMetadataQueuesUntilIdentification() async throws {
+    let probe = MetadataRequestProbe()
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    try await client.bootstrap()
+
+    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
+    try await Task.sleep(for: .milliseconds(50))
+    #expect(probe.requestCount == 0)
+
+    let report = await client.prepareSupportConversationContext(
+      VisitorMetadata(["supportLastSource": "game"])
+    )
+
+    #expect(report.issues.count == 1)
+    #expect(report.issues.first?.step == .conversationContext)
+    #expect(probe.requestCount == 0)
+
+    try await client.identify(externalId: "user_123")
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    #expect(probe.requests[0]["plan"] == .string("starter"))
+    #expect(probe.requests[0]["supportLastSource"] == .string("game"))
+  }
+
+  @Test("Queued metadata flushes exactly once after bootstrap auto-identify")
+  @MainActor
+  func queuedMetadataFlushesOnceAfterBootstrapIdentify() async throws {
+    let probe = MetadataRequestProbe()
+    var identifyCount = 0
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path.hasSuffix("/contacts/identify"):
+        identifyCount += 1
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
+      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
+        let body = try decodeRequestBody(
+          UpdateVisitorMetadataRequest.self,
+          from: request
+        )
+        probe.recordStart(body.metadata)
+        defer { probe.recordFinish() }
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    client.setIdentity(externalId: "user_123")
+    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
+
+    try await client.bootstrap()
+    try await waitUntil {
+      probe.requestCount == 1
+    }
+
+    #expect(identifyCount == 1)
+    #expect(probe.requestCount == 1)
+    #expect(probe.requests[0]["plan"] == .string("starter"))
+  }
+
   // MARK: - Activity Tracking
 
   @Test("Activity tracking calls correct endpoint")
@@ -408,5 +706,113 @@ struct MockNetworkTests {
     let response: GenerateUploadURLResponse = try await rest.request(.generateUploadURL, body: body)
     #expect(response.publicUrl == "https://cdn.example.com/uploads/file.pdf")
     #expect(response.uploadUrl.contains("s3.amazonaws.com"))
+  }
+}
+
+private final class MetadataRequestProbe: @unchecked Sendable {
+  private let lock = NSLock()
+  private let firstRequestStarted = DispatchSemaphore(value: 0)
+  private let releaseFirstRequest = DispatchSemaphore(value: 0)
+  private let blockFirstRequest: Bool
+
+  private var requestsStorage: [VisitorMetadata] = []
+  private var requestCountStorage = 0
+  private var maxConcurrentRequestsStorage = 0
+  private var concurrentRequests = 0
+
+  init(blockFirstRequest: Bool = false) {
+    self.blockFirstRequest = blockFirstRequest
+  }
+
+  var requests: [VisitorMetadata] {
+    lock.withLock { requestsStorage }
+  }
+
+  var requestCount: Int {
+    lock.withLock { requestCountStorage }
+  }
+
+  var maxConcurrentRequests: Int {
+    lock.withLock { maxConcurrentRequestsStorage }
+  }
+
+  func recordStart(_ metadata: VisitorMetadata) {
+    let shouldBlock: Bool = lock.withLock {
+      requestCountStorage += 1
+      concurrentRequests += 1
+      maxConcurrentRequestsStorage = max(maxConcurrentRequestsStorage, concurrentRequests)
+      requestsStorage.append(metadata)
+      return blockFirstRequest && requestCountStorage == 1
+    }
+
+    if shouldBlock {
+      firstRequestStarted.signal()
+      releaseFirstRequest.wait()
+    }
+  }
+
+  func recordFinish() {
+    lock.withLock {
+      concurrentRequests -= 1
+    }
+  }
+
+  func waitForFirstRequest(timeout: TimeInterval) -> Bool {
+    firstRequestStarted.wait(timeout: .now() + timeout) == .success
+  }
+
+  func releaseBlockedRequest() {
+    releaseFirstRequest.signal()
+  }
+}
+
+private func decodeRequestBody<T: Decodable>(
+  _ type: T.Type,
+  from request: URLRequest
+) throws -> T {
+  let data: Data
+  if let body = request.httpBody {
+    data = body
+  } else if let stream = request.httpBodyStream {
+    stream.open()
+    defer { stream.close() }
+
+    var result = Data()
+    let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: 4096)
+    defer { buffer.deallocate() }
+
+    while stream.hasBytesAvailable {
+      let count = stream.read(buffer, maxLength: 4096)
+      if count > 0 {
+        result.append(buffer, count: count)
+      }
+    }
+    data = result
+  } else {
+    throw URLError(.badServerResponse)
+  }
+
+  return try JSONDecoder().decode(T.self, from: data)
+}
+
+private func waitUntil(
+  timeout: Duration = .seconds(1),
+  pollInterval: Duration = .milliseconds(10),
+  condition: @escaping @Sendable () -> Bool
+) async throws {
+  let deadline = ContinuousClock.now + timeout
+  while !condition() {
+    if ContinuousClock.now >= deadline {
+      throw URLError(.timedOut)
+    }
+    try await Task.sleep(for: pollInterval)
+  }
+}
+
+private extension NSLock {
+  func withLock<T>(_ body: () -> T) -> T {
+    lock()
+    defer { unlock() }
+    return body()
   }
 }

@@ -23,10 +23,10 @@ public final class CossistantClient {
   private let rest: RESTClient
   private let webSocket: WebSocketClient
   private let storage: VisitorStorage
+  private let shouldConnectWebSocketOnBootstrap: Bool
   private var pendingIdentity: PendingIdentity?
-  private var pendingMetadata: VisitorMetadata?
   private var isVisitorIdentified = false
-  private var isFlushingMetadata = false
+  private var metadataFlushState = MetadataFlushState()
 
   /// Called on the main actor when the visitor sends a message. Receives the plain text.
   public var onMessageSent: ((_ text: String) -> Void)?
@@ -44,10 +44,25 @@ public final class CossistantClient {
   /// The current visitor ID.
   public private(set) var visitorId: String?
 
-  public init(configuration: Configuration) {
+  public convenience init(configuration: Configuration) {
+    self.init(
+      configuration: configuration,
+      restSession: .shared,
+      storage: VisitorStorage(),
+      shouldConnectWebSocketOnBootstrap: true
+    )
+  }
+
+  init(
+    configuration: Configuration,
+    restSession: URLSession,
+    storage: VisitorStorage,
+    shouldConnectWebSocketOnBootstrap: Bool
+  ) {
     self.configuration = configuration
-    self.rest = RESTClient(configuration: configuration)
-    self.storage = VisitorStorage()
+    self.rest = RESTClient(configuration: configuration, session: restSession)
+    self.storage = storage
+    self.shouldConnectWebSocketOnBootstrap = shouldConnectWebSocketOnBootstrap
 
     let agentRegistry = AgentRegistry()
     let conversationStore = ConversationStore(rest: rest)
@@ -171,11 +186,13 @@ public final class CossistantClient {
     }
 
     if isVisitorIdentified {
-      flushPendingMetadataIfPossible()
+      startMetadataFlushIfPossible()
     }
 
     // Connect WebSocket
-    await webSocket.connect(visitorId: response.visitor.id)
+    if shouldConnectWebSocketOnBootstrap {
+      await webSocket.connect(visitorId: response.visitor.id)
+    }
   }
 
   // MARK: - Identity
@@ -223,9 +240,8 @@ public final class CossistantClient {
   /// Clears any pending identity and queued metadata. Call on logout before creating a new client.
   public func clearIdentity() {
     pendingIdentity = nil
-    pendingMetadata = nil
     isVisitorIdentified = false
-    isFlushingMetadata = false
+    metadataFlushState.reset()
     visitorId = nil
     storage.visitorId = nil
     Task {
@@ -254,7 +270,7 @@ public final class CossistantClient {
     )
     isVisitorIdentified = true
     SupportLogger.identifySuccess(contactId: response.contact.id)
-    flushPendingMetadataIfPossible()
+    startMetadataFlushIfPossible()
   }
 
   public func prepareSupportContact(
@@ -287,7 +303,11 @@ public final class CossistantClient {
     }
 
     do {
-      try await updateMetadataNow(metadata)
+      let targetRevision = mergePendingMetadata(metadata)
+      try await flushMetadataThroughRevision(
+        targetRevision,
+        requireIdentifiedVisitor: true
+      )
       return SupportPreparationReport()
     } catch {
       SupportLogger.storeError("Client", action: "prepareSupportContact", error: error)
@@ -308,7 +328,11 @@ public final class CossistantClient {
     }
 
     do {
-      try await updateMetadataNow(metadata)
+      let targetRevision = mergePendingMetadata(metadata)
+      try await flushMetadataThroughRevision(
+        targetRevision,
+        requireIdentifiedVisitor: true
+      )
       return SupportPreparationReport()
     } catch {
       SupportLogger.storeError("Client", action: "prepareSupportConversationContext", error: error)
@@ -327,63 +351,97 @@ public final class CossistantClient {
   ///
   /// Each call merges into the pending metadata — keys from later calls overwrite earlier ones.
   public func updateMetadata(_ metadata: VisitorMetadata) {
-    mergePendingMetadata(metadata)
-    flushPendingMetadataIfPossible()
+    _ = mergePendingMetadata(metadata)
+    startMetadataFlushIfPossible()
   }
 
-  private func flushPendingMetadataIfPossible() {
-    guard visitorId != nil, isVisitorIdentified, pendingMetadata != nil, !isFlushingMetadata else {
+  private func startMetadataFlushIfPossible() {
+    guard visitorId != nil,
+          isVisitorIdentified,
+          metadataFlushState.pendingMetadata != nil else {
       return
     }
-
-    isFlushingMetadata = true
+    let task = makeMetadataFlushTaskIfNeeded()
     Task { @MainActor [weak self] in
+      do {
+        try await task.value
+      } catch {
+        guard let self, self.metadataFlushState.lastFlushError != nil else { return }
+        SupportLogger.storeError("Client", action: "updateMetadata", error: error)
+      }
+    }
+  }
+
+  private func makeMetadataFlushTaskIfNeeded() -> Task<Void, Error> {
+    if let activeFlushTask = metadataFlushState.activeFlushTask {
+      return activeFlushTask
+    }
+
+    metadataFlushState.lastFlushError = nil
+    let task = Task { @MainActor [weak self] in
       guard let self else { return }
-      defer { self.isFlushingMetadata = false }
+      defer { self.metadataFlushState.activeFlushTask = nil }
+      try await self.runMetadataFlushLoop()
+    }
+    metadataFlushState.activeFlushTask = task
+    return task
+  }
 
-      while self.visitorId != nil, self.isVisitorIdentified, self.pendingMetadata != nil {
-        do {
-          try await self.flushPendingMetadataNow(requireIdentifiedVisitor: false)
-        } catch {
-          SupportLogger.storeError("Client", action: "updateMetadata", error: error)
-          break
+  private func runMetadataFlushLoop() async throws {
+    while let visitorId,
+          isVisitorIdentified,
+          let metadata = metadataFlushState.pendingMetadata {
+      let revision = metadataFlushState.metadataRevision
+      let request = UpdateVisitorMetadataRequest(metadata: metadata)
+
+      do {
+        try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
+      } catch {
+        metadataFlushState.lastFlushError = error
+        throw error
+      }
+
+      metadataFlushState.lastFlushError = nil
+      metadataFlushState.flushedMetadataRevision = max(
+        metadataFlushState.flushedMetadataRevision,
+        revision
+      )
+
+      if metadataFlushState.pendingMetadata == metadata {
+        metadataFlushState.pendingMetadata = nil
+      }
+    }
+  }
+
+  private func flushMetadataThroughRevision(
+    _ targetRevision: Int,
+    requireIdentifiedVisitor: Bool
+  ) async throws {
+    while metadataFlushState.flushedMetadataRevision < targetRevision {
+      guard visitorId != nil else {
+        throw CossistantError.notBootstrapped
+      }
+      guard isVisitorIdentified else {
+        if requireIdentifiedVisitor {
+          throw CossistantError.visitorNotIdentified
         }
+        return
       }
-    }
-  }
-
-  private func mergePendingMetadata(_ metadata: VisitorMetadata) {
-    if var existing = pendingMetadata {
-      existing.storage.merge(metadata.storage) { _, new in new }
-      pendingMetadata = existing
-    } else {
-      pendingMetadata = metadata
-    }
-  }
-
-  private func updateMetadataNow(_ metadata: VisitorMetadata) async throws {
-    mergePendingMetadata(metadata)
-    try await flushPendingMetadataNow(requireIdentifiedVisitor: true)
-  }
-
-  private func flushPendingMetadataNow(requireIdentifiedVisitor: Bool) async throws {
-    guard let visitorId else {
-      throw CossistantError.notBootstrapped
-    }
-    guard pendingMetadata != nil else { return }
-    guard isVisitorIdentified else {
-      if requireIdentifiedVisitor {
-        throw CossistantError.visitorNotIdentified
+      guard metadataFlushState.pendingMetadata != nil else {
+        if let lastFlushError = metadataFlushState.lastFlushError {
+          throw lastFlushError
+        }
+        return
       }
-      return
-    }
-    guard let metadata = pendingMetadata else { return }
 
-    let request = UpdateVisitorMetadataRequest(metadata: metadata)
-    try await rest.requestVoid(.updateVisitorMetadata(visitorId: visitorId), body: request)
-    if pendingMetadata == metadata {
-      pendingMetadata = nil
+      let task = makeMetadataFlushTaskIfNeeded()
+      try await task.value
     }
+  }
+
+  @discardableResult
+  private func mergePendingMetadata(_ metadata: VisitorMetadata) -> Int {
+    metadataFlushState.merge(metadata)
   }
 
   // MARK: - File Upload
@@ -657,4 +715,33 @@ private struct PendingIdentity: Sendable, Equatable {
   let name: String?
   let image: String?
   let metadata: VisitorMetadata?
+}
+
+private struct MetadataFlushState {
+  var pendingMetadata: VisitorMetadata?
+  var metadataRevision = 0
+  var flushedMetadataRevision = 0
+  var activeFlushTask: Task<Void, Error>?
+  var lastFlushError: Error?
+
+  mutating func reset() {
+    pendingMetadata = nil
+    metadataRevision = 0
+    flushedMetadataRevision = 0
+    lastFlushError = nil
+    activeFlushTask?.cancel()
+    activeFlushTask = nil
+  }
+
+  @discardableResult
+  mutating func merge(_ metadata: VisitorMetadata) -> Int {
+    if var existing = pendingMetadata {
+      existing.storage.merge(metadata.storage) { _, new in new }
+      pendingMetadata = existing
+    } else {
+      pendingMetadata = metadata
+    }
+    metadataRevision += 1
+    return metadataRevision
+  }
 }
