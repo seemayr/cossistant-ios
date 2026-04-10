@@ -92,6 +92,20 @@ actor RESTClient {
       request.setValue(visitorId, forHTTPHeaderField: "X-Visitor-Id")
     }
 
+    SupportLogger.requestHeaders(
+      endpoint.method,
+      path: endpoint.path,
+      origin: configuration.origin,
+      publicKey: configuration.apiKey,
+      visitorId: visitorId
+    )
+    SupportLogger.requestDetails(
+      endpoint.method,
+      path: endpoint.path,
+      headers: request.allHTTPHeaderFields ?? [:],
+      body: body
+    )
+
     request.httpBody = body
     return request
   }

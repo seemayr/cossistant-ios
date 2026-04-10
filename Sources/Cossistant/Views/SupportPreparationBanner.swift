@@ -5,36 +5,53 @@ struct SupportPreparationBanner: View {
   let issue: SupportPreparationIssue
   let isRetrying: Bool
   let onRetry: () -> Void
+  let onDismiss: () -> Void
 
   var body: some View {
-    HStack(alignment: .top, spacing: 12) {
-      Image(systemSymbol: .exclamationmarkTriangleFill)
-        .foregroundStyle(.orange)
-        .padding(.top, 2)
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .top, spacing: 12) {
+        Image(systemSymbol: .exclamationmarkTriangleFill)
+          .foregroundStyle(.orange)
+          .padding(.top, 2)
 
-      VStack(alignment: .leading, spacing: 4) {
-        Text(issue.title)
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 4) {
+          Text(issue.title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.primary)
 
-        Text(issue.message)
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-      }
+          Text(issue.message)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
 
-      Spacer(minLength: 8)
+        Spacer(minLength: 8)
 
-      Button(action: onRetry) {
-        if isRetrying {
-          ProgressView()
-            .controlSize(.small)
-        } else {
-          Text("Retry")
+        Button(action: onDismiss) {
+          Image(systemSymbol: .xmark)
             .font(.footnote.weight(.semibold))
         }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(
+          CossistantContent.current.supportPreparationDismissLabel
+            ?? R.string(.support_preparation_dismiss)
+        )
       }
-      .buttonStyle(.borderless)
-      .disabled(isRetrying)
+
+      HStack {
+        Spacer(minLength: 0)
+
+        Button(action: onRetry) {
+          if isRetrying {
+            ProgressView()
+              .controlSize(.small)
+          } else {
+            Text(R.string(.retry_short))
+              .font(.footnote.weight(.semibold))
+          }
+        }
+        .buttonStyle(.borderless)
+        .disabled(isRetrying)
+      }
     }
     .padding(12)
     .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))

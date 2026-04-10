@@ -23,8 +23,8 @@ public struct SupportIdentity: Sendable, Equatable, Hashable {
   }
 }
 
-/// Context for opening support with durable contact metadata plus best-effort
-/// per-entry context attached right before a new conversation starts.
+/// Context for opening support with durable contact metadata plus
+/// conversation-scoped metadata sent when a new conversation is created.
 ///
 /// Usage from a game loading screen:
 /// ```swift
@@ -35,8 +35,8 @@ public struct SupportIdentity: Sendable, Equatable, Hashable {
 ///     autoCreateConversation: true,
 ///     contactMetadata: ["platform": .string("iOS")],
 ///     conversationContext: [
-///       "supportLastGameId": .string("game_123"),
-///       "supportLastGroupId": .string("group_456"),
+///       "gameId": .string("game_123"),
+///       "groupId": .string("group_456"),
 ///     ],
 ///     initialMessage: "I'm having trouble loading a game."
 ///   )
@@ -55,9 +55,7 @@ public struct SupportContext: Sendable, Equatable, Hashable {
   /// Durable support/contact metadata that should be attached to the contact record.
   public let contactMetadata: VisitorMetadata
 
-  /// Best-effort support entry context. Until the backend supports true
-  /// conversation metadata, this is mirrored into reserved contact keys right
-  /// before a new conversation is created.
+  /// Conversation-scoped metadata attached to the conversation create request.
   public let conversationContext: VisitorMetadata
 
   /// Optional pre-filled first message from the visitor.
@@ -72,8 +70,8 @@ public struct SupportContext: Sendable, Equatable, Hashable {
     initialMessage: String? = nil
   ) {
     var conversationContext = conversationContext
-    if conversationContext["supportLastSource"] == nil {
-      conversationContext["supportLastSource"] = .string(source)
+    if conversationContext["source"] == nil {
+      conversationContext["source"] = .string(source)
     }
 
     self.source = source

@@ -86,6 +86,9 @@ enum R {
     // MARK: - Image Viewer
     case image_load_failed
 
+    // MARK: - Support Preparation
+    case support_preparation_dismiss
+
     // MARK: - Attachments
     case attachment_photo_library
     case attachment_choose_file

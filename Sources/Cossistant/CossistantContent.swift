@@ -44,6 +44,10 @@ public struct CossistantContent: Sendable {
   /// Default: "You can still contact support, but some support details may be missing."
   public var supportPreparationDetailsMessage: String?
 
+  /// Overrides the accessibility label for dismissing the support warning banner.
+  /// Default: "Dismiss warning"
+  public var supportPreparationDismissLabel: String?
+
   public init(
     emptyChatDescription: String? = nil,
     emptyChatHumanNote: String? = nil,
@@ -51,7 +55,8 @@ public struct CossistantContent: Sendable {
     participationWaitingHint: String? = nil,
     supportPreparationWarningTitle: String? = nil,
     supportPreparationIdentificationMessage: String? = nil,
-    supportPreparationDetailsMessage: String? = nil
+    supportPreparationDetailsMessage: String? = nil,
+    supportPreparationDismissLabel: String? = nil
   ) {
     self.emptyChatDescription = emptyChatDescription
     self.emptyChatHumanNote = emptyChatHumanNote
@@ -60,6 +65,7 @@ public struct CossistantContent: Sendable {
     self.supportPreparationWarningTitle = supportPreparationWarningTitle
     self.supportPreparationIdentificationMessage = supportPreparationIdentificationMessage
     self.supportPreparationDetailsMessage = supportPreparationDetailsMessage
+    self.supportPreparationDismissLabel = supportPreparationDismissLabel
   }
 
   /// The active content configuration. Set once during app setup.

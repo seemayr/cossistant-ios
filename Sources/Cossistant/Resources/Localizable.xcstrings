@@ -2233,6 +2233,42 @@
         }
       }
     },
+    "support_preparation_dismiss" : {
+      "comment" : "Accessibility label for the button that dismisses the support preparation warning banner.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warnung schließen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss warning"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar aviso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer l'avertissement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chiudi avviso"
+          }
+        }
+      }
+    },
     "support_title" : {
       "comment" : "Navigation title for the main support conversation list.",
       "extractionState" : "manual",

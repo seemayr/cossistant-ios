@@ -320,31 +320,6 @@ public final class CossistantClient {
     }
   }
 
-  public func prepareSupportConversationContext(
-    _ metadata: VisitorMetadata
-  ) async -> SupportPreparationReport {
-    guard !metadata.storage.isEmpty else {
-      return SupportPreparationReport()
-    }
-
-    do {
-      let targetRevision = mergePendingMetadata(metadata)
-      try await flushMetadataThroughRevision(
-        targetRevision,
-        requireIdentifiedVisitor: true
-      )
-      return SupportPreparationReport()
-    } catch {
-      SupportLogger.storeError("Client", action: "prepareSupportConversationContext", error: error)
-      return SupportPreparationReport(issues: [
-        SupportPreparationIssue(
-          step: .conversationContext,
-          technicalDetails: error.localizedDescription
-        )
-      ])
-    }
-  }
-
   /// Updates the visitor's metadata (merge, not replace). Works regardless of bootstrap state:
   /// - **Before bootstrap:** queues metadata locally; flushed automatically during ``bootstrap()``.
   /// - **After bootstrap:** sends to the server immediately.
@@ -582,7 +557,8 @@ public final class CossistantClient {
     text: String,
     attachments: [FileAttachment] = [],
     visitorId: String?,
-    channel: String? = nil
+    channel: String? = nil,
+    metadata: VisitorMetadata? = nil
   ) async throws -> CreateConversationResponse {
     guard let website else { throw CossistantError.notBootstrapped }
 
@@ -654,7 +630,8 @@ public final class CossistantClient {
         visitorId: visitorId,
         conversationId: localConversationId,
         defaultTimelineItems: [messageItem],
-        channel: channel ?? "apple"
+        channel: channel ?? "apple",
+        metadata: metadata
       )
       let response = try await conversations.create(request)
 

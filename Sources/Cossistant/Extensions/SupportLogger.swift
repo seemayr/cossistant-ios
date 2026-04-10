@@ -15,6 +15,10 @@ enum SupportLogger {
   /// Whether print() logging is enabled (always visible in Xcode console).
   public nonisolated(unsafe) static var printEnabled = true
 
+  /// Whether verbose network logging (headers + body) is enabled.
+  /// Off by default to avoid JSON pretty-print overhead on hot paths.
+  public nonisolated(unsafe) static var verboseNetworkLogging = false
+
   private static func log(_ message: String) {
     if printEnabled {
       print("\(prefix) \(message)")
@@ -25,6 +29,61 @@ enum SupportLogger {
 
   static func requestStarted(_ method: String, path: String) {
     let msg = "[\(method)] \(path)"
+    network.debug("\(msg)")
+    log(msg)
+  }
+
+  static func requestHeaders(
+    _ method: String,
+    path: String,
+    origin: String,
+    publicKey: String,
+    visitorId: String?
+  ) {
+    guard verboseNetworkLogging else { return }
+    let maskedPublicKey: String
+    if publicKey.count > 12 {
+      maskedPublicKey = "\(publicKey.prefix(8))...\(publicKey.suffix(4))"
+    } else {
+      maskedPublicKey = publicKey
+    }
+
+    let visitorPart = visitorId ?? "(none)"
+    let msg = "[\(method)] \(path) headers: Origin=\(origin) X-Public-Key=\(maskedPublicKey) X-Visitor-Id=\(visitorPart)"
+    network.debug("\(msg)")
+    log(msg)
+  }
+
+  static func requestDetails(
+    _ method: String,
+    path: String,
+    headers: [String: String],
+    body: Data?
+  ) {
+    guard verboseNetworkLogging else { return }
+    let sortedHeaders = headers
+      .sorted { $0.key.localizedCaseInsensitiveCompare($1.key) == .orderedAscending }
+      .map { "\($0.key)=\($0.value)" }
+      .joined(separator: " ")
+
+    let bodyString: String
+    if let body,
+       let jsonObject = try? JSONSerialization.jsonObject(with: body),
+       let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
+       let prettyString = String(data: prettyData, encoding: .utf8) {
+      bodyString = prettyString
+    } else if let body,
+              let rawString = String(data: body, encoding: .utf8) {
+      bodyString = rawString
+    } else {
+      bodyString = "(empty)"
+    }
+
+    let msg = """
+    [\(method)] \(path) request:
+    headers: \(sortedHeaders)
+    body: \(bodyString)
+    """
     network.debug("\(msg)")
     log(msg)
   }

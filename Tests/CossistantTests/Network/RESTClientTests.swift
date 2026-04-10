@@ -206,8 +206,47 @@ struct MockNetworkTests {
     let store = ConversationStore(rest: rest)
     let response = try await store.create(CreateConversationRequest())
     #expect(response.conversation.id == "conv_new_rest")
+    #expect(response.conversation.metadata?["source"] == .string("game_loading"))
     #expect(store.conversations.count == 1)
     #expect(store.conversations[0].id == "conv_new_rest")
+  }
+
+  @Test("createConversationAndSend includes conversation metadata in the create request")
+  @MainActor
+  func createConversationAndSendIncludesConversationMetadata() async throws {
+    var capturedCreateRequest: CreateConversationRequest?
+    MockURLProtocol.requestHandler = { request in
+      let path = request.url?.path ?? ""
+      switch path {
+      case _ where path.hasSuffix("/websites"):
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
+      case _ where path == "/v1/conversations" || path.hasSuffix("/conversations"):
+        capturedCreateRequest = try decodeRequestBody(
+          CreateConversationRequest.self,
+          from: request
+        )
+        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.createConversationResponse)
+      default:
+        throw URLError(.unsupportedURL)
+      }
+    }
+
+    let client = makeClient()
+    try await client.bootstrap()
+
+    let response = try await client.createConversationAndSend(
+      text: "I need help",
+      visitorId: "vis_001",
+      channel: "apple",
+      metadata: VisitorMetadata([
+        "source": "game_loading",
+        "gameId": "game_123"
+      ])
+    )
+
+    #expect(response.conversation.id == "conv_new_rest")
+    #expect(capturedCreateRequest?.metadata?["source"] == .string("game_loading"))
+    #expect(capturedCreateRequest?.metadata?["gameId"] == .string("game_123"))
   }
 
   // MARK: - TimelineStore
@@ -433,61 +472,6 @@ struct MockNetworkTests {
     #expect(probe.requests[1]["source"] == .string("support"))
   }
 
-  @Test("Support context waits for an active background metadata flush")
-  @MainActor
-  func supportContextWaitsForBackgroundFlush() async throws {
-    let probe = MetadataRequestProbe(blockFirstRequest: true)
-    MockURLProtocol.requestHandler = { request in
-      let path = request.url?.path ?? ""
-      switch path {
-      case _ where path.hasSuffix("/websites"):
-        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
-      case _ where path.hasSuffix("/contacts/identify"):
-        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.identifyResponse)
-      case _ where path.contains("/visitors/") && path.hasSuffix("/metadata"):
-        let body = try decodeRequestBody(
-          UpdateVisitorMetadataRequest.self,
-          from: request
-        )
-        probe.recordStart(body.metadata)
-        defer { probe.recordFinish() }
-        return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, "{}".data(using: .utf8)!)
-      default:
-        throw URLError(.unsupportedURL)
-      }
-    }
-
-    let client = makeClient()
-    client.setIdentity(externalId: "user_123")
-    try await client.bootstrap()
-
-    client.updateMetadata(VisitorMetadata(["plan": "starter"]))
-    try await waitUntil {
-      probe.requestCount == 1
-    }
-
-    let reportTask = Task { @MainActor in
-      await client.prepareSupportConversationContext(
-        VisitorMetadata(["supportLastSource": "game"])
-      )
-    }
-
-    try await Task.sleep(for: .milliseconds(50))
-    #expect(probe.requestCount == 1)
-    #expect(probe.maxConcurrentRequests == 1)
-
-    probe.releaseBlockedRequest()
-    let report = await reportTask.value
-
-    try await waitUntil {
-      probe.requestCount == 2
-    }
-
-    #expect(report.issues.isEmpty)
-    #expect(probe.requests[1]["plan"] == .string("starter"))
-    #expect(probe.requests[1]["supportLastSource"] == .string("game"))
-  }
-
   @Test("Latest value wins when the same metadata key changes during an in-flight flush")
   @MainActor
   func metadataLatestValueWinsAcrossSerializedFlushes() async throws {
@@ -516,26 +500,20 @@ struct MockNetworkTests {
     client.setIdentity(externalId: "user_123")
     try await client.bootstrap()
 
-    client.updateMetadata(VisitorMetadata(["supportLastGroupId": "group_a"]))
+    client.updateMetadata(VisitorMetadata(["groupId": "group_a"]))
     try await waitUntil {
       probe.requestCount == 1
     }
 
-    let reportTask = Task { @MainActor in
-      await client.prepareSupportConversationContext(
-        VisitorMetadata(["supportLastGroupId": "group_b"])
-      )
-    }
+    client.updateMetadata(VisitorMetadata(["groupId": "group_b"]))
     probe.releaseBlockedRequest()
-    let report = await reportTask.value
 
     try await waitUntil {
       probe.requestCount == 2
     }
 
-    #expect(report.issues.isEmpty)
-    #expect(probe.requests[0]["supportLastGroupId"] == .string("group_a"))
-    #expect(probe.requests[1]["supportLastGroupId"] == .string("group_b"))
+    #expect(probe.requests[0]["groupId"] == .string("group_a"))
+    #expect(probe.requests[1]["groupId"] == .string("group_b"))
   }
 
   @Test("Failed metadata flush stays queued until a later retry trigger succeeds")
@@ -585,7 +563,7 @@ struct MockNetworkTests {
     #expect(probe.requests[1] == VisitorMetadata(["plan": "starter"]))
   }
 
-  @Test("Anonymous metadata stays queued and awaited support prep reports a degraded state")
+  @Test("Anonymous metadata stays queued until identification succeeds")
   @MainActor
   func anonymousMetadataQueuesUntilIdentification() async throws {
     let probe = MetadataRequestProbe()
@@ -616,12 +594,8 @@ struct MockNetworkTests {
     try await Task.sleep(for: .milliseconds(50))
     #expect(probe.requestCount == 0)
 
-    let report = await client.prepareSupportConversationContext(
-      VisitorMetadata(["supportLastSource": "game"])
-    )
-
-    #expect(report.issues.count == 1)
-    #expect(report.issues.first?.step == .conversationContext)
+    client.updateMetadata(VisitorMetadata(["source": "game"]))
+    try await Task.sleep(for: .milliseconds(50))
     #expect(probe.requestCount == 0)
 
     try await client.identify(externalId: "user_123")
@@ -630,7 +604,7 @@ struct MockNetworkTests {
     }
 
     #expect(probe.requests[0]["plan"] == .string("starter"))
-    #expect(probe.requests[0]["supportLastSource"] == .string("game"))
+    #expect(probe.requests[0]["source"] == .string("game"))
   }
 
   @Test("Queued metadata flushes exactly once after bootstrap auto-identify")

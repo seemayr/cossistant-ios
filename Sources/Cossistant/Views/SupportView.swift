@@ -28,10 +28,10 @@ import SFSafeSymbols
 ///     source: "game_loading",
 ///     autoCreateConversation: true,
 ///     conversationContext: VisitorMetadata([
-///       "supportLastGameId": .string(game.id),
-///       "supportLastGroupId": .string(group.id),
+///       "gameId": .string(game.id),
+///       "groupId": .string(group.id),
 ///     ]),
-///     initialMessage: "I'm having trouble loading a game."
+///     initialMessage: "I’m having trouble loading a game."
 ///   )
 /// )
 /// ```
@@ -140,12 +140,19 @@ public struct SupportView: View {
           isRetrying: supportSession.isPreparing,
           onRetry: {
             Task {
-              await supportSession.retry(using: client, includeConversationContext: false)
+              await supportSession.retry(using: client)
+              withCossistantAnimation { }
+            }
+          },
+          onDismiss: {
+            withCossistantAnimation {
+              supportSession.dismiss(issue)
             }
           }
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
+        .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
     .navigationTitle(R.string(.support_title))
@@ -253,6 +260,18 @@ public enum ChatDestination: Hashable {
 
 private let previewAPIKey = ProcessInfo.processInfo.environment["COSSISTANT_API_KEY"] ?? "pk_test_YOUR_KEY_HERE"
 private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIGIN"] ?? "http://localhost:3000"
+private let previewExternalID = ProcessInfo.processInfo.environment["COSSISTANT_PREVIEW_EXTERNAL_ID"] ?? "ios-ID"
+private let previewEmail = ProcessInfo.processInfo.environment["COSSISTANT_PREVIEW_EMAIL"] ?? "ios@sdk.com"
+private let previewName = ProcessInfo.processInfo.environment["COSSISTANT_PREVIEW_NAME"] ?? "iOS Preview"
+
+private var previewIdentity: SupportIdentity? {
+  let identity = SupportIdentity(
+    externalId: previewExternalID,
+    email: previewEmail,
+    name: previewName
+  )
+  return identity.isEmpty ? nil : identity
+}
 
 #Preview("Support (Standalone)") {
   SupportNavigationView(
@@ -324,11 +343,30 @@ private let previewOrigin = ProcessInfo.processInfo.environment["COSSISTANT_ORIG
     autoCreate: SupportContext(
       source: "game_loading",
       autoCreateConversation: true,
+      identity: previewIdentity,
       conversationContext: VisitorMetadata([
-        "supportLastGameId": .string("test_game_001"),
-        "supportLastGroupId": .string("test_group_001"),
+        "gameId": .string("test_game_001"),
+        "groupId": .string("test_group_001"),
       ]),
       initialMessage: "I'm having trouble loading a game."
+    )
+  )
+}
+
+#Preview("Support (Identify)") {
+  SupportNavigationView(
+    client: CossistantClient(
+      configuration: Configuration(
+        apiKey: previewAPIKey,
+        origin: previewOrigin
+      )
+    ),
+    channel: "ios_identify_preview",
+    autoCreate: SupportContext(
+      source: "preview_identify",
+      autoCreateConversation: true,
+      identity: previewIdentity,
+      initialMessage: "Testing identify from preview."
     )
   )
 }

@@ -90,15 +90,19 @@ public struct ChatView: View {
           isRetrying: supportSession.isPreparing,
           onRetry: {
             Task {
-              await supportSession.retry(
-                using: client,
-                includeConversationContext: context?.conversationContext.storage.isEmpty == false
-              )
+              await supportSession.retry(using: client)
+              withCossistantAnimation { }
+            }
+          },
+          onDismiss: {
+            withCossistantAnimation {
+              supportSession.dismiss(issue)
             }
           }
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
+        .transition(.opacity.combined(with: .move(edge: .top)))
       }
 
       messageArea
@@ -499,7 +503,8 @@ public struct ChatView: View {
         text: text,
         attachments: attachments,
         visitorId: visitorId,
-        channel: conversationChannel
+        channel: conversationChannel,
+        metadata: context?.conversationContext
       )
       activeConversationId = response.conversation.id
       SupportHaptics.play(.conversationCreated)

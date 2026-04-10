@@ -40,6 +40,7 @@ enum TestFixtures {
       {
         "id": "conv_001",
         "title": "Test conversation",
+        "metadata": { "source": "settings" },
         "createdAt": "2026-04-06T10:00:00.000Z",
         "updatedAt": "2026-04-06T10:05:00.000Z",
         "visitorId": "vis_001",
@@ -368,6 +369,7 @@ enum TestFixtures {
     "conversation": {
       "id": "conv_new_rest",
       "title": null,
+      "metadata": { "source": "game_loading", "gameId": "game_123" },
       "createdAt": "2026-04-06T12:00:00.000Z",
       "updatedAt": "2026-04-06T12:00:00.000Z",
       "visitorId": "vis_001",

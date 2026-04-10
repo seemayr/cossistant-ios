@@ -6,20 +6,24 @@ import Observation
 public final class SupportSessionStore {
   public let context: SupportContext?
 
-  public private(set) var issues: [SupportPreparationIssue] = []
+  public internal(set) var issues: [SupportPreparationIssue] = []
   public private(set) var isPreparing = false
 
   private var contactPreparationTask: Task<SupportPreparationReport, Never>?
   private var hasCompletedContactPreparation = false
+  private var dismissedSteps = Set<SupportPreparationStep>()
 
   public init(context: SupportContext? = nil) {
     self.context = context
   }
 
   public var bannerIssue: SupportPreparationIssue? {
-    issues.first(where: { $0.step == .identification })
-      ?? issues.first(where: { $0.step == .conversationContext })
-      ?? issues.first
+    issues.first {
+      $0.step == .identification && !dismissedSteps.contains($0.step)
+    }
+      ?? issues.first {
+        !dismissedSteps.contains($0.step)
+      }
   }
 
   public func prepareOnOpen(using client: CossistantClient) {
@@ -28,14 +32,14 @@ public final class SupportSessionStore {
 
   public func prepareForNewConversation(using client: CossistantClient) async {
     await awaitContactPreparation(using: client, force: false)
-    await attachConversationContext(using: client)
   }
 
-  public func retry(using client: CossistantClient, includeConversationContext: Bool) async {
+  public func retry(using client: CossistantClient) async {
     await awaitContactPreparation(using: client, force: true)
-    if includeConversationContext {
-      await attachConversationContext(using: client)
-    }
+  }
+
+  public func dismiss(_ issue: SupportPreparationIssue) {
+    dismissedSteps.insert(issue.step)
   }
 
   private func startContactPreparation(using client: CossistantClient, force: Bool) {
@@ -81,22 +85,11 @@ public final class SupportSessionStore {
     }
   }
 
-  private func attachConversationContext(using client: CossistantClient) async {
-    guard let context, !context.conversationContext.storage.isEmpty else { return }
-
-    replaceIssues(for: [.conversationContext], with: [])
-    isPreparing = true
-
-    let report = await client.prepareSupportConversationContext(context.conversationContext)
-    replaceIssues(for: [.conversationContext], with: report.issues)
-
-    isPreparing = false
-  }
-
   private func replaceIssues(
     for steps: Set<SupportPreparationStep>,
     with replacement: [SupportPreparationIssue]
   ) {
+    dismissedSteps.subtract(steps)
     issues.removeAll { steps.contains($0.step) }
     issues.append(contentsOf: replacement)
   }

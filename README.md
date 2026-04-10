@@ -63,15 +63,15 @@ SupportView(
     identity: SupportIdentity(externalId: user.id, email: user.email),
     contactMetadata: VisitorMetadata(["plan": .string("pro")]),
     conversationContext: VisitorMetadata([
-      "supportLastGameId": .string(game.id),
-      "supportLastGroupId": .string(group.id),
+      "gameId": .string(game.id),
+      "groupId": .string(group.id),
     ]),
     initialMessage: "I'm having trouble loading a game."
   )
 )
 ```
 
-Identity and metadata are attached via `prepareSupportContact` / `prepareSupportConversationContext` before the first message is sent. If either step fails, support still opens — a banner surfaces the issue with a retry option.
+Identity and contact metadata are attached via `prepareSupportContact` before the first message is sent. Conversation context is sent as metadata on the conversation create request. If preparation fails, support still opens — a dismissible banner surfaces the issue with a retry option.
 
 ## Configuration
 
@@ -119,6 +119,7 @@ CossistantContent.current = CossistantContent(
 | `supportPreparationWarningTitle` | `"Details unavailable"` | Shared title for the degraded-state banner |
 | `supportPreparationIdentificationMessage` | Localized SDK string | Message when visitor identification fails |
 | `supportPreparationDetailsMessage` | Localized SDK string | Message when metadata or context attachment fails |
+| `supportPreparationDismissLabel` | `"Dismiss warning"` | Accessibility label for the banner dismiss button |
 
 All properties are optional — `nil` uses the SDK's built-in localized default.
 

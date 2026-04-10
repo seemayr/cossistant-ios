@@ -16,6 +16,7 @@ struct ConversationTests {
     #expect(response.conversations[0].id == "conv_001")
     #expect(response.conversations[0].status == .open)
     #expect(response.conversations[0].title == "Test conversation")
+    #expect(response.conversations[0].metadata?["source"] == .string("settings"))
     #expect(response.pagination.hasMore == false)
     #expect(response.pagination.total == 1)
   }
@@ -47,6 +48,29 @@ struct ConversationTests {
     #expect(response.items[1].visitorId == "vis_001")
     #expect(response.hasNextPage == false)
     #expect(response.nextCursor == nil)
+  }
+
+  @Test("CreateConversationRequest encodes nil when metadata is empty")
+  func createConversationRequestOmitsEmptyMetadata() throws {
+    let request = CreateConversationRequest(
+      metadata: VisitorMetadata([:])
+    )
+    let encoder = JSONEncoder()
+    let data = try encoder.encode(request)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    #expect(json?["metadata"] == nil)
+  }
+
+  @Test("CreateConversationRequest encodes metadata when non-empty")
+  func createConversationRequestEncodesMetadata() throws {
+    let request = CreateConversationRequest(
+      metadata: VisitorMetadata(["source": .string("game")])
+    )
+    let encoder = JSONEncoder()
+    let data = try encoder.encode(request)
+    let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    let metadata = json?["metadata"] as? [String: String]
+    #expect(metadata?["source"] == "game")
   }
 
   @Test("ConversationStatus enum values match API")

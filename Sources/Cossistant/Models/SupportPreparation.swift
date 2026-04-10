@@ -3,7 +3,6 @@ import Foundation
 public enum SupportPreparationStep: String, Sendable, Equatable, Hashable {
   case identification
   case contactMetadata
-  case conversationContext
 }
 
 public struct SupportPreparationIssue: Error, Sendable, Equatable, Hashable, Identifiable {
@@ -28,9 +27,6 @@ public struct SupportPreparationIssue: Error, Sendable, Equatable, Hashable, Ide
       return CossistantContent.current.supportPreparationIdentificationMessage
         ?? "You can still contact support, but we couldn't attach your account details right now."
     case .contactMetadata:
-      return CossistantContent.current.supportPreparationDetailsMessage
-        ?? "You can still contact support, but some support details may be missing."
-    case .conversationContext:
       return CossistantContent.current.supportPreparationDetailsMessage
         ?? "You can still contact support, but some support details may be missing."
     }

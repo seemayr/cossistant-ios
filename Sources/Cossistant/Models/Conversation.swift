@@ -5,6 +5,7 @@ import Foundation
 public struct Conversation: Codable, Sendable, Identifiable {
   public let id: String
   public var title: String?
+  public let metadata: VisitorMetadata?
   public let createdAt: String
   public let updatedAt: String
   public let visitorId: String
@@ -64,17 +65,20 @@ public struct CreateConversationRequest: Codable, Sendable {
   public let conversationId: String?
   public let defaultTimelineItems: [TimelineItem]
   public let channel: String
+  public let metadata: VisitorMetadata?
 
   public init(
     visitorId: String? = nil,
     conversationId: String? = nil,
     defaultTimelineItems: [TimelineItem] = [],
-    channel: String = "apple"
+    channel: String = "apple",
+    metadata: VisitorMetadata? = nil
   ) {
     self.visitorId = visitorId
     self.conversationId = conversationId
     self.defaultTimelineItems = defaultTimelineItems
     self.channel = channel
+    self.metadata = metadata?.storage.isEmpty == true ? nil : metadata
   }
 }
 
