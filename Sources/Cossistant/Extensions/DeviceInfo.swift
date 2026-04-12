@@ -5,6 +5,8 @@ import Foundation
 
 /// Collects native device information to send as visitor context.
 public struct DeviceInfo: Sendable {
+  public let browser: String
+  public let browserVersion: String
   public let os: String
   public let osVersion: String
   public let device: String
@@ -17,43 +19,57 @@ public struct DeviceInfo: Sendable {
   /// Collects device info from the current environment.
   public static func current() -> DeviceInfo {
     let processInfo = ProcessInfo.processInfo
+    let bundle = Bundle.main
+    let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+    let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
+    let osVer = normalizedOSVersion(from: processInfo)
 
     #if os(iOS)
     let osName = "iOS"
-    let osVer = processInfo.operatingSystemVersionString
-    let deviceName = deviceModelName()
+    let deviceName = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
     let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "tablet" : "mobile"
     #elseif os(macOS)
     let osName = "macOS"
-    let osVer = processInfo.operatingSystemVersionString
     let deviceName = "Mac"
     let deviceType = "desktop"
     #else
     let osName = "unknown"
-    let osVer = processInfo.operatingSystemVersionString
     let deviceName = "unknown"
     let deviceType = "unknown"
     #endif
 
-    let bundle = Bundle.main
-    let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
-    let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
-
     return DeviceInfo(
+      browser: "Native App",
+      browserVersion: version,
       os: osName,
       osVersion: osVer,
       device: deviceName,
       deviceType: deviceType,
-      language: Locale.current.language.languageCode?.identifier ?? "en",
+      language: Locale.preferredLanguages.first ?? Locale.current.identifier,
       timezone: TimeZone.current.identifier,
       appVersion: version,
       appBuild: build
     )
   }
 
+  public func toVisitorContextRequest() -> UpdateVisitorContextRequest {
+    UpdateVisitorContextRequest(
+      browser: browser,
+      browserVersion: browserVersion,
+      os: os,
+      osVersion: osVersion,
+      device: device,
+      deviceType: deviceType,
+      language: language,
+      timezone: timezone
+    )
+  }
+
   /// Converts to metadata suitable for the identify/update visitor API.
   public func toMetadata() -> VisitorMetadata {
     var metadata = VisitorMetadata()
+    metadata["browser"] = .string(browser)
+    metadata["browserVersion"] = .string(browserVersion)
     metadata["os"] = .string(os)
     metadata["osVersion"] = .string(osVersion)
     metadata["device"] = .string(device)
@@ -65,16 +81,11 @@ public struct DeviceInfo: Sendable {
     return metadata
   }
 
-  #if os(iOS)
-  private static func deviceModelName() -> String {
-    var systemInfo = utsname()
-    uname(&systemInfo)
-    let mirror = Mirror(reflecting: systemInfo.machine)
-    let identifier = mirror.children.reduce("") { id, element in
-      guard let value = element.value as? Int8, value != 0 else { return id }
-      return id + String(UnicodeScalar(UInt8(value)))
+  private static func normalizedOSVersion(from processInfo: ProcessInfo) -> String {
+    let version = processInfo.operatingSystemVersion
+    if version.patchVersion > 0 {
+      return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
     }
-    return identifier
+    return "\(version.majorVersion).\(version.minorVersion)"
   }
-  #endif
 }

@@ -76,6 +76,37 @@ extension MetadataValue: ExpressibleByBooleanLiteral {
 
 // MARK: - Update Visitor Metadata
 
+public struct UpdateVisitorContextRequest: Codable, Sendable {
+  public let browser: String?
+  public let browserVersion: String?
+  public let os: String?
+  public let osVersion: String?
+  public let device: String?
+  public let deviceType: String?
+  public let language: String?
+  public let timezone: String?
+
+  public init(
+    browser: String? = nil,
+    browserVersion: String? = nil,
+    os: String? = nil,
+    osVersion: String? = nil,
+    device: String? = nil,
+    deviceType: String? = nil,
+    language: String? = nil,
+    timezone: String? = nil
+  ) {
+    self.browser = browser
+    self.browserVersion = browserVersion
+    self.os = os
+    self.osVersion = osVersion
+    self.device = device
+    self.deviceType = deviceType
+    self.language = language
+    self.timezone = timezone
+  }
+}
+
 public struct UpdateVisitorMetadataRequest: Codable, Sendable {
   public let metadata: VisitorMetadata
 

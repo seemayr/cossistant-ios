@@ -170,6 +170,10 @@ public final class CossistantClient {
       throw CossistantError.visitorBlocked
     }
 
+    Task {
+      await syncNativeVisitorContext(visitorId: response.visitor.id)
+    }
+
     SupportLogger.bootstrapSuccess(visitorId: response.visitor.id, websiteId: response.id)
 
     // Auto-identify if identity was pre-configured via setIdentity()
@@ -422,6 +426,16 @@ public final class CossistantClient {
   @discardableResult
   private func mergePendingMetadata(_ metadata: VisitorMetadata) -> Int {
     metadataFlushState.merge(metadata)
+  }
+
+  private func syncNativeVisitorContext(visitorId: String) async {
+    let request = DeviceInfo.current().toVisitorContextRequest()
+
+    do {
+      try await rest.requestVoid(.updateVisitor(visitorId: visitorId), body: request)
+    } catch {
+      SupportLogger.storeError("Client", action: "syncNativeVisitorContext", error: error)
+    }
   }
 
   // MARK: - File Upload

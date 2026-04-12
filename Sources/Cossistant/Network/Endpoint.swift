@@ -12,6 +12,7 @@ enum Endpoint {
   case setTyping(conversationId: String)
   case submitRating(conversationId: String)
   case identifyContact
+  case updateVisitor(visitorId: String)
   case updateVisitorMetadata(visitorId: String)
   case generateUploadURL
   case visitorActivity
@@ -22,7 +23,7 @@ enum Endpoint {
       return "GET"
     case .createConversation, .sendMessage, .markSeen, .setTyping, .submitRating, .identifyContact, .generateUploadURL, .visitorActivity:
       return "POST"
-    case .updateVisitorMetadata:
+    case .updateVisitor, .updateVisitorMetadata:
       return "PATCH"
     }
   }
@@ -49,6 +50,8 @@ enum Endpoint {
       return "/conversations/\(conversationId)/rating"
     case .identifyContact:
       return "/contacts/identify"
+    case .updateVisitor(let visitorId):
+      return "/visitors/\(visitorId)"
     case .updateVisitorMetadata(let visitorId):
       return "/visitors/\(visitorId)/metadata"
     case .generateUploadURL:
