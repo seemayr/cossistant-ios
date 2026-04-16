@@ -67,6 +67,14 @@ public struct CreateConversationRequest: Codable, Sendable {
   public let channel: String
   public let metadata: VisitorMetadata?
 
+  private enum CodingKeys: String, CodingKey {
+    case visitorId
+    case conversationId
+    case defaultTimelineItems
+    case channel
+    case metadata
+  }
+
   public init(
     visitorId: String? = nil,
     conversationId: String? = nil,
@@ -79,6 +87,57 @@ public struct CreateConversationRequest: Codable, Sendable {
     self.defaultTimelineItems = defaultTimelineItems
     self.channel = channel
     self.metadata = metadata?.storage.isEmpty == true ? nil : metadata
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encodeIfPresent(visitorId, forKey: .visitorId)
+    try container.encodeIfPresent(conversationId, forKey: .conversationId)
+    try container.encode(
+      defaultTimelineItems.map(CreateConversationTimelineItemPayload.init),
+      forKey: .defaultTimelineItems
+    )
+    try container.encode(channel, forKey: .channel)
+    try container.encodeIfPresent(metadata, forKey: .metadata)
+  }
+}
+
+private struct CreateConversationTimelineItemPayload: Encodable {
+  let item: TimelineItem
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case conversationId
+    case organizationId
+    case visibility
+    case type
+    case text
+    case tool
+    case parts
+    case userId
+    case aiAgentId
+    case visitorId
+    case deletedAt
+  }
+
+  init(_ item: TimelineItem) {
+    self.item = item
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encodeIfPresent(item.id, forKey: .id)
+    try container.encode(item.conversationId, forKey: .conversationId)
+    try container.encode(item.organizationId, forKey: .organizationId)
+    try container.encode(item.visibility, forKey: .visibility)
+    try container.encode(item.type, forKey: .type)
+    try container.encode(item.text, forKey: .text)
+    try container.encodeIfPresent(item.tool, forKey: .tool)
+    try container.encode(item.parts, forKey: .parts)
+    try container.encode(item.userId, forKey: .userId)
+    try container.encode(item.aiAgentId, forKey: .aiAgentId)
+    try container.encode(item.visitorId, forKey: .visitorId)
+    try container.encodeIfPresent(item.deletedAt, forKey: .deletedAt)
   }
 }
 
