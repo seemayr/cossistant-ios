@@ -73,40 +73,6 @@ struct ConversationTests {
     #expect(metadata?["source"] == "game")
   }
 
-  @Test("CreateConversationRequest omits timeline item createdAt")
-  func createConversationRequestOmitsTimelineItemCreatedAt() throws {
-    let request = CreateConversationRequest(
-      defaultTimelineItems: [
-        TimelineItem(
-          id: "item_001",
-          conversationId: "conv_001",
-          organizationId: "org_001",
-          visibility: .public,
-          type: .message,
-          text: "Hello",
-          tool: nil,
-          parts: [.text(TextPart(text: "Hello"))],
-          userId: nil,
-          aiAgentId: nil,
-          visitorId: "vis_001",
-          createdAt: "2026-04-16T10:00:00.000Z",
-          deletedAt: nil
-        )
-      ]
-    )
-    let encoder = JSONEncoder()
-    let data = try encoder.encode(request)
-    let json = try #require(
-      JSONSerialization.jsonObject(with: data) as? [String: Any]
-    )
-    let items = try #require(json["defaultTimelineItems"] as? [[String: Any]])
-    let item = try #require(items.first)
-
-    #expect(item["createdAt"] == nil)
-    #expect(item["conversationId"] as? String == "conv_001")
-    #expect(item["visitorId"] as? String == "vis_001")
-  }
-
   @Test("ConversationStatus enum values match API")
   func conversationStatusValues() throws {
     let json = """

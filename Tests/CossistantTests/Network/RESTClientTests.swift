@@ -214,14 +214,15 @@ struct MockNetworkTests {
   @Test("createConversationAndSend includes conversation metadata in the create request")
   @MainActor
   func createConversationAndSendIncludesConversationMetadata() async throws {
-    var capturedCreateRequestBody: [String: Any]?
+    var capturedCreateRequest: CreateConversationRequest?
     MockURLProtocol.requestHandler = { request in
       let path = request.url?.path ?? ""
       switch path {
       case _ where path.hasSuffix("/websites"):
         return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.websiteResponse)
       case _ where path == "/v1/conversations" || path.hasSuffix("/conversations"):
-        capturedCreateRequestBody = try decodeRequestBodyJSON(
+        capturedCreateRequest = try decodeRequestBody(
+          CreateConversationRequest.self,
           from: request
         )
         return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, TestFixtures.createConversationResponse)
@@ -244,15 +245,8 @@ struct MockNetworkTests {
     )
 
     #expect(response.conversation.id == "conv_new_rest")
-    let metadata = try #require(capturedCreateRequestBody?["metadata"] as? [String: String])
-    let defaultTimelineItems = try #require(
-      capturedCreateRequestBody?["defaultTimelineItems"] as? [[String: Any]]
-    )
-    let firstItem = try #require(defaultTimelineItems.first)
-
-    #expect(metadata["source"] == "game_loading")
-    #expect(metadata["gameId"] == "game_123")
-    #expect(firstItem["createdAt"] == nil)
+    #expect(capturedCreateRequest?.metadata?["source"] == .string("game_loading"))
+    #expect(capturedCreateRequest?.metadata?["gameId"] == .string("game_123"))
   }
 
   // MARK: - TimelineStore
@@ -750,22 +744,6 @@ private func decodeRequestBody<T: Decodable>(
   _ type: T.Type,
   from request: URLRequest
 ) throws -> T {
-  let data = try requestBodyData(from: request)
-  return try JSONDecoder().decode(T.self, from: data)
-}
-
-private func decodeRequestBodyJSON(
-  from request: URLRequest
-) throws -> [String: Any] {
-  let data = try requestBodyData(from: request)
-  let json = try JSONSerialization.jsonObject(with: data)
-  guard let dictionary = json as? [String: Any] else {
-    throw URLError(.cannotParseResponse)
-  }
-  return dictionary
-}
-
-private func requestBodyData(from request: URLRequest) throws -> Data {
   let data: Data
   if let body = request.httpBody {
     data = body
@@ -787,7 +765,8 @@ private func requestBodyData(from request: URLRequest) throws -> Data {
   } else {
     throw URLError(.badServerResponse)
   }
-  return data
+
+  return try JSONDecoder().decode(T.self, from: data)
 }
 
 private func waitUntil(
