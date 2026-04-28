@@ -31,6 +31,59 @@ struct DeviceInfoTests {
     #expect(metadata["appBuild"] != nil)
   }
 
+  @Test("toMetadata() includes raw model identifier when available")
+  func toMetadataIncludesModelIdentifier() {
+    let info = DeviceInfo(
+      browser: "Native App",
+      browserVersion: "1.0",
+      os: "iOS",
+      osVersion: "18.0",
+      device: "iPhone 13 Pro",
+      deviceType: "mobile",
+      deviceModelIdentifier: "iPhone14,2",
+      language: "en-US",
+      timezone: "UTC",
+      appVersion: "1.0",
+      appBuild: "1"
+    )
+
+    let metadata = info.toMetadata()
+
+    #expect(metadata["deviceModelIdentifier"] == .string("iPhone14,2"))
+  }
+
+  @Test("known Apple model identifiers resolve to friendly names")
+  func resolvesKnownAppleModelIdentifiers() {
+    #expect(
+      DeviceInfo.deviceName(
+        forModelIdentifier: "iPhone14,2",
+        fallback: "iPhone"
+      ) == "iPhone 13 Pro"
+    )
+    #expect(
+      DeviceInfo.deviceName(
+        forModelIdentifier: "iPad16,6",
+        fallback: "iPad"
+      ) == "iPad Pro 13-inch (M4)"
+    )
+  }
+
+  @Test("unknown Apple model identifiers fall back to the raw identifier")
+  func unknownAppleModelIdentifierFallsBackToRawIdentifier() {
+    #expect(
+      DeviceInfo.deviceName(
+        forModelIdentifier: "iPhone99,9",
+        fallback: "iPhone"
+      ) == "iPhone99,9"
+    )
+    #expect(
+      DeviceInfo.deviceName(
+        forModelIdentifier: nil,
+        fallback: "iPhone"
+      ) == "iPhone"
+    )
+  }
+
   @Test("toMetadata() values are strings")
   func toMetadataValuesAreStrings() {
     let info = DeviceInfo.current()
